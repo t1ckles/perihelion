@@ -1,0 +1,2656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Perihelion · v0.0.4 — UEE Fleet Registry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@100;200;300;400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-void:        #03060a;
+    --bg-deep:        #060c14;
+    --bg-panel:       #0a1420;
+    --bg-card:        #0d1a28;
+    --bg-card-hover:  #112030;
+    --border-dim:     rgba(0, 180, 220, 0.12);
+    --border-mid:     rgba(0, 180, 220, 0.28);
+    --border-bright:  rgba(0, 180, 220, 0.65);
+    --accent:         #00b4dc;
+    --accent-dim:     rgba(0, 180, 220, 0.6);
+    --accent-glow:    rgba(0, 180, 220, 0.15);
+    --amber:          #e8a020;
+    --amber-dim:      rgba(232, 160, 32, 0.6);
+    --amber-glow:     rgba(232, 160, 32, 0.1);
+    --text-primary:   #c8dde8;
+    --text-secondary: #7a9aaa;
+    --text-dim:       #3d5a68;
+    --text-amber:     #e8a020;
+    --lti-color:      #00c896;
+    --lti-glow:       rgba(0, 200, 150, 0.15);
+    --danger:         #e84040;
+    --font-display:   'Rajdhani', sans-serif;
+    --font-mono:      'Share Tech Mono', monospace;
+    --font-body:      'Exo 2', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg-void);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ═══════════════════════════════════════════
+     STARFIELD BACKGROUND
+  ═══════════════════════════════════════════ */
+  #starfield {
+    position: fixed; inset: 0; z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse at 20% 50%, rgba(0,30,60,0.4) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(0,20,50,0.3) 0%, transparent 50%),
+      var(--bg-void);
+  }
+  #starfield canvas { position: absolute; inset: 0; }
+
+  /* ═══════════════════════════════════════════
+     BRIDGE ENTRY SCREEN
+  ═══════════════════════════════════════════ */
+  #entry-screen {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: var(--bg-void);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+  }
+  #entry-screen.dissolving {
+    opacity: 0;
+    transform: scale(1.04);
+    pointer-events: none;
+  }
+
+  .entry-grid-overlay {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,180,220,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,180,220,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    animation: gridPulse 6s ease-in-out infinite;
+  }
+  @keyframes gridPulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  .entry-horizon {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 200px;
+    background: linear-gradient(to top, rgba(0,100,150,0.08), transparent);
+  }
+
+  .entry-content {
+    position: relative; z-index: 2;
+    text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 0;
+  }
+
+  .entry-logo-ring {
+    width: 120px; height: 120px;
+    position: relative; margin-bottom: 40px;
+    animation: ringRotate 20s linear infinite;
+  }
+  .entry-logo-ring svg { width: 100%; height: 100%; }
+  @keyframes ringRotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .entry-classification {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.4em;
+    color: var(--accent-dim);
+    margin-bottom: 16px;
+    animation: textFlicker 4s ease-in-out infinite;
+  }
+  @keyframes textFlicker {
+    0%, 95%, 100% { opacity: 1; }
+    96% { opacity: 0.3; }
+    97% { opacity: 1; }
+    98% { opacity: 0.5; }
+  }
+
+  .entry-title {
+    font-family: var(--font-display);
+    font-size: clamp(42px, 6vw, 80px);
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: var(--text-primary);
+    line-height: 1;
+    margin-bottom: 6px;
+    text-shadow: 0 0 40px rgba(0,180,220,0.3);
+  }
+
+  .entry-subtitle {
+    font-family: var(--font-display);
+    font-size: clamp(14px, 2vw, 20px);
+    font-weight: 300;
+    letter-spacing: 0.35em;
+    color: var(--accent);
+    margin-bottom: 60px;
+    text-transform: uppercase;
+  }
+
+  .entry-divider {
+    width: 300px; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    margin-bottom: 40px;
+    position: relative;
+  }
+  .entry-divider::before, .entry-divider::after {
+    content: ''; position: absolute; top: -3px;
+    width: 7px; height: 7px;
+    border: 1px solid var(--accent);
+    transform: rotate(45deg);
+    background: var(--bg-void);
+  }
+  .entry-divider::before { left: 0; }
+  .entry-divider::after { right: 0; }
+
+  .entry-stats {
+    display: flex; gap: 60px;
+    margin-bottom: 60px;
+  }
+  .entry-stat {
+    text-align: center;
+  }
+  .entry-stat-num {
+    font-family: var(--font-mono);
+    font-size: 32px;
+    color: var(--accent);
+    display: block;
+    text-shadow: 0 0 20px rgba(0,180,220,0.4);
+  }
+  .entry-stat-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+  }
+
+  .entry-cta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.35em;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 16px 40px;
+    border: 1px solid var(--border-mid);
+    background: transparent;
+    color: var(--accent);
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    position: relative;
+    overflow: hidden;
+  }
+  .entry-cta::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: var(--accent-glow);
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+  .entry-cta:hover::before { transform: translateX(0); }
+  .entry-cta:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 20px rgba(0,180,220,0.2);
+    color: #fff;
+  }
+
+  .entry-corner {
+    position: absolute;
+    width: 30px; height: 30px;
+    border-color: var(--border-bright);
+    border-style: solid;
+  }
+  .entry-corner.tl { top: 30px; left: 30px; border-width: 1px 0 0 1px; }
+  .entry-corner.tr { top: 30px; right: 30px; border-width: 1px 1px 0 0; }
+  .entry-corner.bl { bottom: 30px; left: 30px; border-width: 0 0 1px 1px; }
+  .entry-corner.br { bottom: 30px; right: 30px; border-width: 0 1px 1px 0; }
+
+  /* ═══════════════════════════════════════════
+     MAIN APP
+  ═══════════════════════════════════════════ */
+  #app {
+    position: relative; z-index: 1;
+    display: none;
+    min-height: 100vh;
+  }
+  #app.visible { display: block; }
+
+
+  .search-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .search-input {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    background: var(--bg-card);
+    border: 1px solid var(--border-mid);
+    color: var(--text-primary);
+    padding: 6px 14px;
+    width: 220px;
+    outline: none;
+    transition: border-color 0.2s, width 0.3s;
+  }
+  .search-input:focus {
+    border-color: var(--accent);
+    width: 280px;
+  }
+  .search-input::placeholder { color: var(--text-dim); }
+  .danger-btn {
+    border-color: rgba(232,64,64,0.35) !important;
+    color: var(--danger) !important;
+  }
+  .danger-btn:hover {
+    background: rgba(232,64,64,0.1) !important;
+    border-color: var(--danger) !important;
+  }
+  /* ═══════════════════════════════════════════
+     BRIDGE HEADER
+  ═══════════════════════════════════════════ */
+  .bridge-header {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(6, 12, 20, 0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-dim);
+    padding: 0 32px;
+    display: flex; align-items: center;
+    height: 60px;
+    gap: 32px;
+  }
+
+  .header-logo {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--text-primary);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .header-logo span { color: var(--accent); }
+
+
+  .ver-badge {
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.15em;
+    vertical-align: middle;
+    margin-left: 4px;
+  }
+  .header-divider {
+    width: 1px; height: 28px;
+    background: var(--border-mid);
+    flex-shrink: 0;
+  }
+
+  .header-nav {
+    display: flex; gap: 4px;
+    flex: 1;
+  }
+
+  .nav-btn {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 6px 16px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    position: relative;
+  }
+  .nav-btn::after {
+    content: '';
+    position: absolute; bottom: -1px; left: 0; right: 0; height: 2px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transition: transform 0.2s ease;
+  }
+  .nav-btn:hover { color: var(--text-primary); border-color: var(--border-dim); }
+  .nav-btn.active {
+    color: var(--accent);
+    border-color: var(--border-mid);
+    background: var(--accent-glow);
+  }
+  .nav-btn.active::after { transform: scaleX(1); }
+
+  .header-right {
+    display: flex; align-items: center; gap: 16px;
+    flex-shrink: 0;
+  }
+
+  .fleet-count-badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--text-secondary);
+  }
+  .fleet-count-badge span { color: var(--accent); font-size: 14px; }
+
+  .import-btn {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border: 1px solid var(--border-mid);
+    background: transparent;
+    color: var(--accent);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .import-btn:hover {
+    background: var(--accent-glow);
+    border-color: var(--accent);
+  }
+
+  /* ═══════════════════════════════════════════
+     MAIN CONTENT
+  ═══════════════════════════════════════════ */
+  .main-content {
+    padding: 32px;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+
+  /* ═══════════════════════════════════════════
+     VIEW PANELS
+  ═══════════════════════════════════════════ */
+  .view-panel { display: none; }
+  .view-panel.active { display: block; }
+
+  /* ═══════════════════════════════════════════
+     SECTION HEADERS
+  ═══════════════════════════════════════════ */
+  .section-header {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-dim);
+  }
+  .section-header-label {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .section-header-count {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .section-header-line {
+    flex: 1; height: 1px;
+    background: linear-gradient(90deg, var(--border-mid), transparent);
+  }
+
+  /* ═══════════════════════════════════════════
+     SHIP GRID
+  ═══════════════════════════════════════════ */
+  .ships-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+
+  /* ═══════════════════════════════════════════
+     SHIP CARD
+  ═══════════════════════════════════════════ */
+  .ship-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 16/10;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  .ship-card::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(6,12,20,0.95) 0%, rgba(6,12,20,0.5) 50%, transparent 100%);
+    z-index: 1;
+  }
+  .ship-card:hover {
+    border-color: var(--border-bright);
+    box-shadow: 0 0 24px rgba(0,180,220,0.12), inset 0 0 24px rgba(0,180,220,0.03);
+    transform: translateY(-2px);
+  }
+  .ship-card.has-lore {
+    border-color: rgba(232,160,32,0.2);
+  }
+  .ship-card.has-lore:hover {
+    border-color: var(--amber);
+    box-shadow: 0 0 24px rgba(232,160,32,0.12);
+  }
+
+  .ship-card-img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: center;
+    opacity: 0.55;
+    transition: opacity 0.3s ease, transform 0.4s ease;
+  }
+  .ship-card:hover .ship-card-img {
+    opacity: 0.75;
+    transform: scale(1.04);
+  }
+  .ship-card-img-placeholder {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0.08;
+  }
+  .ship-card-img-placeholder svg { width: 60px; height: 60px; }
+
+  .ship-card-body {
+    position: relative; z-index: 2;
+    padding: 10px 12px;
+  }
+
+  .ship-card-badges {
+    position: absolute; top: 8px; right: 8px; z-index: 3;
+    display: flex; gap: 4px;
+  }
+  .badge {
+    font-family: var(--font-mono);
+    font-size: 8px;
+    letter-spacing: 0.15em;
+    padding: 2px 6px;
+    text-transform: uppercase;
+  }
+  .badge-lti {
+    background: var(--lti-glow);
+    border: 1px solid rgba(0,200,150,0.4);
+    color: var(--lti-color);
+  }
+  .badge-lore {
+    background: var(--amber-glow);
+    border: 1px solid rgba(232,160,32,0.4);
+    color: var(--amber);
+  }
+  .badge-unid {
+    background: rgba(232,64,64,0.1);
+    border: 1px solid rgba(232,64,64,0.3);
+    color: var(--danger);
+  }
+
+  .ship-card-mfr {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--accent-dim);
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+  .ship-card-name {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--text-primary);
+    line-height: 1.2;
+  }
+
+  /* ═══════════════════════════════════════════
+     SQUADRON VIEW
+  ═══════════════════════════════════════════ */
+  .squadron-manager {
+    margin-bottom: 32px;
+  }
+
+  .squadron-controls {
+    display: flex; gap: 12px; align-items: center;
+    margin-bottom: 24px;
+  }
+
+  .sq-input {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    background: var(--bg-card);
+    border: 1px solid var(--border-mid);
+    color: var(--text-primary);
+    padding: 8px 14px;
+    flex: 1;
+    max-width: 300px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .sq-input:focus { border-color: var(--accent); }
+  .sq-input::placeholder { color: var(--text-dim); }
+
+  .sq-btn {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 8px 18px;
+    border: 1px solid var(--border-mid);
+    background: transparent;
+    color: var(--accent);
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .sq-btn:hover { background: var(--accent-glow); border-color: var(--accent); }
+  .sq-btn.danger { color: var(--danger); border-color: rgba(232,64,64,0.3); }
+  .sq-btn.danger:hover { background: rgba(232,64,64,0.1); border-color: var(--danger); }
+
+  .squadron-block {
+    margin-bottom: 36px;
+  }
+
+  .squadron-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 14px;
+    padding: 10px 16px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-mid);
+    border-left: 3px solid var(--accent);
+  }
+  .squadron-name-display {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+    flex: 1;
+  }
+  .squadron-ship-count {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  .unassigned-pool {
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-dim);
+  }
+
+  /* Drag-and-drop styles */
+  .ship-card.dragging {
+    opacity: 0.4;
+    border-color: var(--accent);
+  }
+  .squadron-drop-zone {
+    min-height: 80px;
+    border: 1px dashed var(--border-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    padding: 12px;
+  }
+  .squadron-drop-zone.drag-over {
+    border-color: var(--accent);
+    background: var(--accent-glow);
+  }
+  .squadron-drop-zone.has-ships {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+    min-height: unset;
+    border: none;
+  }
+  .drop-hint {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--text-dim);
+    text-align: center;
+  }
+
+  /* ═══════════════════════════════════════════
+     SHIP DETAIL PANEL
+  ═══════════════════════════════════════════ */
+  #detail-panel {
+    display: none !important;
+  }
+  #detail-panel.open { transform: translateX(0); }
+
+  .detail-close {
+    position: absolute; top: 16px; right: 16px;
+    width: 32px; height: 32px;
+    border: 1px solid var(--border-mid);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 5;
+    transition: all 0.2s;
+  }
+  .detail-close:hover { border-color: var(--accent); color: var(--accent); }
+
+  .detail-hero {
+    position: relative;
+    height: 220px;
+    flex-shrink: 0;
+    overflow: hidden;
+    background: var(--bg-panel);
+  }
+  .detail-hero-img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: center;
+    opacity: 0.7;
+    animation: heroPan 20s ease-in-out infinite alternate;
+  }
+  @keyframes heroPan {
+    from { object-position: 30% center; }
+    to   { object-position: 70% center; }
+  }
+  .detail-hero-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(to bottom, transparent 30%, var(--bg-deep) 100%);
+  }
+  .detail-hero-mfr {
+    position: absolute; bottom: 16px; left: 20px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    color: var(--accent-dim);
+    text-transform: uppercase;
+  }
+  .detail-hero-badges {
+    position: absolute; top: 16px; left: 20px;
+    display: flex; gap: 6px;
+  }
+
+  .detail-body {
+    flex: 1; overflow-y: auto;
+    padding: 20px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-mid) transparent;
+  }
+  .detail-body::-webkit-scrollbar { width: 4px; }
+  .detail-body::-webkit-scrollbar-thumb { background: var(--border-mid); }
+
+  .detail-ship-name {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+    line-height: 1.1;
+  }
+
+  .detail-rsi-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--accent-dim);
+    text-decoration: none;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    transition: color 0.2s;
+  }
+  .detail-rsi-link:hover { color: var(--accent); }
+  .detail-rsi-link svg { opacity: 0.6; }
+
+  .detail-divider {
+    height: 1px;
+    background: linear-gradient(90deg, var(--border-mid), transparent);
+    margin: 16px 0;
+  }
+
+  .detail-meta-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 4px;
+  }
+  .detail-meta-item {}
+  .detail-meta-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+  .detail-meta-value {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  .detail-meta-value.highlight { color: var(--accent); }
+  .detail-meta-value.lti-yes { color: var(--lti-color); }
+
+  .detail-section-title {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .lore-textarea {
+    width: 100%;
+    min-height: 120px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-mid);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 300;
+    line-height: 1.6;
+    padding: 12px 14px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+    font-style: italic;
+  }
+  .lore-textarea:focus { border-color: var(--accent); }
+  .lore-textarea::placeholder {
+    color: var(--text-dim);
+    font-style: italic;
+  }
+
+  .lore-save-hint {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: var(--text-dim);
+    margin-top: 6px;
+    text-align: right;
+    transition: color 0.3s;
+  }
+  .lore-save-hint.saved { color: var(--lti-color); }
+
+  .squadron-assign-section { margin-top: 4px; }
+  .squadron-assign-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .squadron-pill-list {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .squadron-pill {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border: 1px solid var(--border-mid);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .squadron-pill:hover { border-color: var(--accent); color: var(--accent); }
+  .squadron-pill.active {
+    border-color: var(--accent);
+    background: var(--accent-glow);
+    color: var(--accent);
+  }
+  .squadron-pill.unassign {
+    border-color: rgba(232,64,64,0.3);
+    color: rgba(232,64,64,0.6);
+  }
+  .squadron-pill.unassign:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+    background: rgba(232,64,64,0.08);
+  }
+
+  /* ═══════════════════════════════════════════
+     IMPORT MODAL
+  ═══════════════════════════════════════════ */
+  #import-modal {
+    position: fixed; inset: 0; z-index: 200;
+    display: none;
+    align-items: center; justify-content: center;
+    background: rgba(3,6,10,0.85);
+    backdrop-filter: blur(4px);
+  }
+  #import-modal.open { display: flex; }
+
+  .import-dialog {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-mid);
+    padding: 32px;
+    width: min(480px, 90vw);
+    position: relative;
+  }
+  .import-dialog-title {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+  }
+  .import-dialog-subtitle {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    line-height: 1.6;
+  }
+  .import-warning {
+    background: rgba(232,64,64,0.08);
+    border: 1px solid rgba(232,64,64,0.3);
+    padding: 12px 14px;
+    margin-bottom: 20px;
+  }
+  .import-warning p {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--danger);
+    line-height: 1.6;
+  }
+  .import-drop-zone {
+    border: 1px dashed var(--border-mid);
+    padding: 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 16px;
+  }
+  .import-drop-zone:hover, .import-drop-zone.drag-over {
+    border-color: var(--accent);
+    background: var(--accent-glow);
+  }
+  .import-drop-zone-text {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+  }
+  .import-drop-zone-sub {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    margin-top: 6px;
+    letter-spacing: 0.1em;
+  }
+  .import-dialog-actions {
+    display: flex; gap: 10px; justify-content: flex-end;
+  }
+
+
+  /* ═══════════════════════════════════════════
+     SHIP MODAL
+  ═══════════════════════════════════════════ */
+  #ship-modal {
+    position: fixed; inset: 0; z-index: 300;
+    display: none;
+    align-items: center; justify-content: center;
+    background: rgba(3,6,10,0.88);
+    backdrop-filter: blur(6px);
+    padding: 20px;
+  }
+  #ship-modal.open { display: flex; }
+
+  .ship-modal-box {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-mid);
+    width: min(760px, 100%);
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 60px rgba(0,180,220,0.08);
+  }
+
+  .ship-modal-hero {
+    position: relative;
+    height: 240px;
+    flex-shrink: 0;
+    overflow: hidden;
+    background: var(--bg-deep);
+    cursor: pointer;
+  }
+  .ship-modal-hero:hover .modal-hero-zoom-hint { opacity: 1; }
+  .modal-hero-zoom-hint {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.35);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    color: var(--accent);
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 3;
+    text-transform: uppercase;
+  }
+  .ship-modal-hero-img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: center;
+    animation: heroPan 18s ease-in-out infinite alternate;
+    transition: transform 0.3s;
+  }
+  .ship-modal-hero-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(to bottom, transparent 40%, var(--bg-panel) 100%);
+    z-index: 1;
+  }
+  .ship-modal-hero-mfr {
+    position: absolute; bottom: 14px; left: 20px; z-index: 2;
+    font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 0.3em;
+    color: var(--accent-dim); text-transform: uppercase;
+  }
+  .ship-modal-hero-badges {
+    position: absolute; top: 14px; left: 20px; z-index: 2;
+    display: flex; gap: 6px;
+  }
+  .ship-modal-close {
+    position: absolute; top: 14px; right: 14px; z-index: 10;
+    width: 32px; height: 32px;
+    border: 1px solid var(--border-mid);
+    background: rgba(6,12,20,0.8);
+    color: var(--text-secondary);
+    cursor: pointer; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+  }
+  .ship-modal-close:hover { border-color: var(--accent); color: var(--accent); }
+
+  .ship-modal-body {
+    overflow-y: auto;
+    padding: 20px 24px 28px;
+    flex: 1;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-mid) transparent;
+  }
+  .ship-modal-body::-webkit-scrollbar { width: 4px; }
+  .ship-modal-body::-webkit-scrollbar-thumb { background: var(--border-mid); }
+
+  .ship-modal-name {
+    font-family: var(--font-display);
+    font-size: 26px; font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text-primary);
+    margin-bottom: 4px; line-height: 1.1;
+  }
+  .ship-modal-rsi-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--font-mono); font-size: 9px;
+    letter-spacing: 0.2em; color: var(--accent-dim);
+    text-decoration: none; text-transform: uppercase;
+    margin-bottom: 16px; transition: color 0.2s;
+  }
+  .ship-modal-rsi-link:hover { color: var(--accent); }
+
+  .ship-modal-stats {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px; margin-bottom: 16px;
+  }
+  .ship-modal-stat {
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    padding: 10px 12px;
+  }
+  .ship-modal-stat-label {
+    font-family: var(--font-mono); font-size: 8px;
+    letter-spacing: 0.25em; color: var(--text-dim);
+    text-transform: uppercase; margin-bottom: 4px;
+  }
+  .ship-modal-stat-value {
+    font-family: var(--font-display); font-size: 14px;
+    font-weight: 600; color: var(--text-primary);
+  }
+  .ship-modal-stat-value.accent { color: var(--accent); }
+  .ship-modal-stat-value.ready  { color: var(--lti-color); }
+  .ship-modal-stat-value.concept { color: var(--amber); }
+
+  .ship-modal-section-title {
+    font-family: var(--font-mono); font-size: 9px;
+    letter-spacing: 0.3em; color: var(--accent);
+    text-transform: uppercase; margin: 14px 0 8px;
+  }
+  .ship-modal-list {
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--text-secondary); line-height: 1.9;
+  }
+  .ship-modal-list li { list-style: none; padding-left: 12px; position: relative; }
+  .ship-modal-list li::before {
+    content: '—'; position: absolute; left: 0;
+    color: var(--text-dim);
+  }
+  .ship-modal-divider {
+    height: 1px;
+    background: linear-gradient(90deg, var(--border-mid), transparent);
+    margin: 14px 0;
+  }
+
+  /* Lore section in modal (fleet ships only) */
+  .ship-modal-lore-wrap { margin-top: 4px; }
+  .ship-modal-lore {
+    width: 100%; min-height: 90px;
+    background: var(--bg-deep);
+    border: 1px solid var(--border-mid);
+    color: var(--text-primary);
+    font-family: var(--font-body); font-size: 13px;
+    font-weight: 300; line-height: 1.6;
+    padding: 10px 12px; resize: vertical; outline: none;
+    font-style: italic; transition: border-color 0.2s;
+  }
+  .ship-modal-lore:focus { border-color: var(--accent); }
+  .ship-modal-lore::placeholder { color: var(--text-dim); font-style: italic; }
+  .ship-modal-lore-hint {
+    font-family: var(--font-mono); font-size: 9px;
+    letter-spacing: 0.15em; color: var(--text-dim);
+    margin-top: 5px; text-align: right; transition: color 0.3s;
+  }
+  .ship-modal-lore-hint.saved { color: var(--lti-color); }
+
+  /* Wing assignment in modal */
+  .ship-modal-wing-label {
+    font-family: var(--font-mono); font-size: 9px;
+    letter-spacing: 0.3em; color: var(--accent);
+    text-transform: uppercase; margin: 14px 0 8px;
+  }
+  .ship-modal-wing-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  /* ═══════════════════════════════════════════
+     GALLERY LIGHTBOX
+  ═══════════════════════════════════════════ */
+  #gallery-lightbox {
+    position: fixed; inset: 0; z-index: 400;
+    display: none;
+    align-items: center; justify-content: center;
+    background: rgba(2,4,8,0.96);
+    cursor: zoom-out;
+  }
+  #gallery-lightbox.open { display: flex; }
+  #gallery-lightbox img {
+    max-width: 92vw; max-height: 88vh;
+    object-fit: contain;
+    border: 1px solid var(--border-mid);
+    box-shadow: 0 0 80px rgba(0,180,220,0.12);
+    cursor: default;
+    animation: galleryFadeIn 0.25s ease;
+  }
+  @keyframes galleryFadeIn {
+    from { opacity: 0; transform: scale(0.96); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  .gallery-close-hint {
+    position: absolute; bottom: 24px; left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--font-mono); font-size: 9px;
+    letter-spacing: 0.3em; color: var(--text-dim);
+    text-transform: uppercase; pointer-events: none;
+  }
+
+  /* ═══════════════════════════════════════════
+     DATABASE FILTER BAR
+  ═══════════════════════════════════════════ */
+  .db-filter-bar {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    margin-bottom: 20px; align-items: center;
+  }
+  .db-filter-btn {
+    font-family: var(--font-mono); font-size: 9px;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    padding: 6px 14px;
+    border: 1px solid var(--border-dim);
+    background: transparent; color: var(--text-secondary);
+    cursor: pointer; transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .db-filter-btn:hover { border-color: var(--border-mid); color: var(--text-primary); }
+  .db-filter-btn.active {
+    border-color: var(--accent);
+    background: var(--accent-glow);
+    color: var(--accent);
+  }
+  .db-filter-sep {
+    width: 1px; height: 20px;
+    background: var(--border-dim);
+    flex-shrink: 0;
+  }
+  .db-mfr-select {
+    font-family: var(--font-mono); font-size: 9px;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 6px 10px;
+    border: 1px solid var(--border-dim);
+    background: var(--bg-card); color: var(--text-secondary);
+    cursor: pointer; outline: none; transition: border-color 0.2s;
+    max-width: 200px;
+  }
+  .db-mfr-select:focus { border-color: var(--accent); }
+  .db-mfr-select option { background: var(--bg-panel); color: var(--text-primary); }
+  /* ═══════════════════════════════════════════
+     SCANLINE OVERLAY
+  ═══════════════════════════════════════════ */
+  .scanlines {
+    position: fixed; inset: 0; z-index: 999;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 3px,
+      rgba(0,0,0,0.03) 3px,
+      rgba(0,0,0,0.03) 4px
+    );
+  }
+
+  /* ═══════════════════════════════════════════
+     TOAST
+  ═══════════════════════════════════════════ */
+  #toast {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px);
+    z-index: 300;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    padding: 10px 24px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-mid);
+    color: var(--accent);
+    opacity: 0;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ═══════════════════════════════════════════
+     RESPONSIVE
+  ═══════════════════════════════════════════ */
+  @media (max-width: 700px) {
+    .bridge-header { padding: 0 16px; gap: 12px; }
+    .main-content { padding: 16px; }
+    .entry-stats { gap: 30px; }
+    #detail-panel { width: 100vw; }
+    .header-nav { gap: 2px; }
+    .nav-btn { padding: 6px 10px; font-size: 9px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="starfield"><canvas id="stars-canvas"></canvas></div>
+<div class="scanlines"></div>
+
+<!-- ════════════════════════════════════════
+     BRIDGE ENTRY SCREEN
+════════════════════════════════════════ -->
+<div id="entry-screen">
+  <div class="entry-grid-overlay"></div>
+  <div class="entry-horizon"></div>
+  <div class="entry-corner tl"></div>
+  <div class="entry-corner tr"></div>
+  <div class="entry-corner bl"></div>
+  <div class="entry-corner br"></div>
+
+  <div class="entry-content">
+    <div class="entry-logo-ring">
+      <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="60" cy="60" r="56" stroke="rgba(0,180,220,0.3)" stroke-width="1"/>
+        <circle cx="60" cy="60" r="44" stroke="rgba(0,180,220,0.15)" stroke-width="1" stroke-dasharray="4 8"/>
+        <circle cx="60" cy="60" r="32" stroke="rgba(0,180,220,0.5)" stroke-width="1"/>
+        <circle cx="60" cy="60" r="6" fill="rgba(0,180,220,0.8)"/>
+        <line x1="60" y1="4" x2="60" y2="28" stroke="rgba(0,180,220,0.6)" stroke-width="1"/>
+        <line x1="60" y1="92" x2="60" y2="116" stroke="rgba(0,180,220,0.6)" stroke-width="1"/>
+        <line x1="4" y1="60" x2="28" y2="60" stroke="rgba(0,180,220,0.6)" stroke-width="1"/>
+        <line x1="92" y1="60" x2="116" y2="60" stroke="rgba(0,180,220,0.6)" stroke-width="1"/>
+        <polygon points="60,38 63,54 60,58 57,54" fill="rgba(0,180,220,0.9)"/>
+      </svg>
+    </div>
+
+    <div class="entry-classification">UEE NAVAL COMMAND // PERIHELION v0.0.4 // CLASSIFIED</div>
+
+    <div class="entry-title">MANIFEST</div>
+    <div class="entry-subtitle">Perihelion Fleet Registry</div>
+
+    <div class="entry-divider"></div>
+
+    <div class="entry-stats">
+      <div class="entry-stat">
+        <span class="entry-stat-num" id="entry-ship-count">—</span>
+        <span class="entry-stat-label">Vessels</span>
+      </div>
+      <div class="entry-stat">
+        <span class="entry-stat-num" id="entry-mfr-count">—</span>
+        <span class="entry-stat-label">Shipyards</span>
+      </div>
+      <div class="entry-stat">
+        <span class="entry-stat-num" id="entry-lti-count">—</span>
+        <span class="entry-stat-label">LTI Hulls</span>
+      </div>
+    </div>
+
+    <button class="entry-cta" onclick="enterBridge()">
+      ⟶ &nbsp; ENTER BRIDGE &nbsp; ⟶
+    </button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     MAIN APP
+════════════════════════════════════════ -->
+<div id="app">
+  <header class="bridge-header">
+    <div class="header-logo">PERIHELION <span class="ver-badge">v0.0.4</span></div>
+    <div class="header-divider"></div>
+    <nav class="header-nav">
+      <button class="nav-btn" data-view="acquisition" onclick="switchView('acquisition', this)">BY ACQUISITION</button>
+      <button class="nav-btn active" data-view="shipyard" onclick="switchView('shipyard', this)">BY SHIPYARD</button>
+      <button class="nav-btn" data-view="squadron" onclick="switchView('squadron', this)">WINGS &amp; SQUADRONS</button>
+      <button class="nav-btn" data-view="database" onclick="switchView('database', this)">SHIP DATABASE</button>
+    </nav>
+    <div class="header-right">
+      <div class="search-wrap">
+        <input type="text" id="search-input" class="search-input" placeholder="⌕  SEARCH VESSELS..." oninput="handleSearch(this.value)">
+      </div>
+      <div class="fleet-count-badge"><span id="header-ship-count">0</span> VESSELS</div>
+      <button class="import-btn" onclick="openImport()">⟳ IMPORT</button>
+      <button class="import-btn danger-btn" onclick="confirmClearFleet()">✕ CLEAR</button>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <!-- BY ACQUISITION VIEW -->
+    <div id="view-acquisition" class="view-panel"></div>
+
+    <!-- BY SHIPYARD VIEW -->
+    <div id="view-shipyard" class="view-panel active"></div>
+
+    <!-- WINGS & SQUADRONS VIEW -->
+    <div id="view-squadron" class="view-panel">
+      <div class="squadron-manager">
+        <div class="squadron-controls">
+          <input type="text" class="sq-input" id="new-wing-input" placeholder="DESIGNATION (e.g. 1st Interception Wing)" maxlength="60">
+          <button class="sq-btn" onclick="createWing()">+ FORM WING</button>
+        </div>
+        <div id="wings-list"></div>
+        <div class="unassigned-pool">
+          <div class="section-header">
+            <div class="section-header-label">Unassigned Vessels</div>
+            <div class="section-header-count" id="unassigned-count"></div>
+            <div class="section-header-line"></div>
+          </div>
+          <div class="squadron-drop-zone has-ships" id="unassigned-pool-grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DATABASE VIEW -->
+    <div id="view-database" class="view-panel">
+      <div id="database-content"></div>
+    </div>
+  </main>
+</div>
+
+<!-- ════════════════════════════════════════
+     SHIP DETAIL PANEL
+════════════════════════════════════════ -->
+<div id="detail-panel">
+  <button class="detail-close" onclick="closeDetail()">✕</button>
+  <div class="detail-hero">
+    <img class="detail-hero-img" id="detail-img" src="" alt="">
+    <div class="detail-hero-overlay"></div>
+    <div class="detail-hero-mfr" id="detail-mfr"></div>
+    <div class="detail-hero-badges" id="detail-badges"></div>
+  </div>
+  <div class="detail-body">
+    <div class="detail-ship-name" id="detail-name"></div>
+    <a class="detail-rsi-link" id="detail-rsi-link" href="#" target="_blank" rel="noopener">
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 5h8M5 1l4 4-4 4" stroke="currentColor" stroke-width="1.2"/></svg>
+      VIEW ON RSI PLEDGE STORE
+    </a>
+    <div class="detail-divider"></div>
+    <div class="detail-meta-grid">
+      <div class="detail-meta-item">
+        <div class="detail-meta-label">Acquisition</div>
+        <div class="detail-meta-value" id="detail-pledge"></div>
+      </div>
+      <div class="detail-meta-item">
+        <div class="detail-meta-label">Date Registered</div>
+        <div class="detail-meta-value" id="detail-date"></div>
+      </div>
+      <div class="detail-meta-item">
+        <div class="detail-meta-label">Pledge Value</div>
+        <div class="detail-meta-value highlight" id="detail-cost"></div>
+      </div>
+      <div class="detail-meta-item">
+        <div class="detail-meta-label">Hull Insurance</div>
+        <div class="detail-meta-value lti-yes" id="detail-lti"></div>
+      </div>
+    </div>
+    <div class="detail-divider"></div>
+
+    <div class="detail-section-title">SHIP'S LOG — PERSONAL NOTATION</div>
+    <textarea class="lore-textarea" id="lore-input"
+      placeholder="Record the history of this vessel — where it was acquired, its service record, notable engagements, or the lore you've written for it. This log persists across sessions."></textarea>
+    <div class="lore-save-hint" id="lore-save-hint">autosaved to local registry</div>
+
+    <div class="detail-divider"></div>
+    <div class="squadron-assign-section">
+      <div class="squadron-assign-label">WING / SQUADRON ASSIGNMENT</div>
+      <div class="squadron-pill-list" id="squadron-pill-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SHIP DETAIL MODAL
+════════════════════════════════════════ -->
+<div id="ship-modal">
+  <div class="ship-modal-box">
+    <button class="ship-modal-close" onclick="closeShipModal()">✕</button>
+    <div class="ship-modal-hero" id="modal-hero" onclick="openGallery()">
+      <img class="ship-modal-hero-img" id="modal-hero-img" src="" alt="">
+      <div class="ship-modal-hero-overlay"></div>
+      <div class="ship-modal-hero-mfr" id="modal-hero-mfr"></div>
+      <div class="ship-modal-hero-badges" id="modal-hero-badges"></div>
+      <div class="modal-hero-zoom-hint">⊕ ENLARGE IMAGE</div>
+    </div>
+    <div class="ship-modal-body" id="modal-body">
+      <div class="ship-modal-name" id="modal-name"></div>
+      <a class="ship-modal-rsi-link" id="modal-rsi-link" href="#" target="_blank" rel="noopener">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 5h8M5 1l4 4-4 4" stroke="currentColor" stroke-width="1.2"/></svg>
+        VIEW ON RSI PLEDGE STORE
+      </a>
+      <div class="ship-modal-stats" id="modal-stats"></div>
+      <div id="modal-dynamic"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     GALLERY LIGHTBOX
+════════════════════════════════════════ -->
+<div id="gallery-lightbox" onclick="closeGallery()">
+  <img id="gallery-img" src="" alt="">
+  <div class="gallery-close-hint">click anywhere to close</div>
+</div>
+
+<!-- ════════════════════════════════════════
+     IMPORT MODAL
+════════════════════════════════════════ -->
+<div id="import-modal">
+  <div class="import-dialog">
+    <button class="detail-close" style="position:absolute;top:16px;right:16px;" onclick="closeImport()">✕</button>
+    <div class="import-dialog-title">IMPORT FLEET MANIFEST</div>
+    <div class="import-dialog-subtitle">
+      Upload a HangarXPLOR JSON export.<br>
+      Accepted format: <code style="color:var(--accent)">shiplist_*.json</code>
+    </div>
+    <div class="import-warning">
+      <p>⚠ WARNING: This will completely replace your current fleet manifest. All vessel records will be overwritten. Ship's Log entries will be permanently erased. This action cannot be undone.</p>
+    </div>
+    <div class="import-drop-zone" id="import-drop-zone"
+         onclick="document.getElementById('file-input').click()"
+         ondragover="handleDragOver(event)"
+         ondragleave="handleDragLeave(event)"
+         ondrop="handleFileDrop(event)">
+      <div class="import-drop-zone-text">DROP JSON FILE HERE</div>
+      <div class="import-drop-zone-sub">or click to browse</div>
+    </div>
+    <input type="file" id="file-input" accept=".json" style="display:none" onchange="handleFileSelect(event)">
+    <div class="import-dialog-actions">
+      <button class="sq-btn" onclick="closeImport()">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  FLEET DATA — pre-enriched from HangarXPLOR JSON
+//  RSI image URLs sourced from RSI pledge store CDN
+//  RSI pledge links manually verified
+// ═══════════════════════════════════════════════════════
+
+const RSI_IMG_BASE = 'https://media.robertsspaceindustries.com/';
+
+// RSI ship data — URLs sourced directly from your spreadsheet
+const RSI_SHIP_DATA = {
+  'ANVL_Lightning_F8C':                 { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/lightning/F8C-Lightning', img: 'https://media.starcitizen.tools/2/2f/F8C_flying_over_river_through_forest_-_Cropped.png' },
+  'ANVL_Lightning_F8C_EE':              { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/lightning/F8C-Lightning-Executive-Edition', img: 'https://media.starcitizen.tools/3/30/F8C_Executive_flying_above_clouds_-_cropped_and_adjusted.png' },
+  'GRIN_PTV':                           { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/ptv/PTV', img: 'https://media.starcitizen.tools/e/e0/PTV_-_Updated_3D_concept.png' },
+  'RSI_Hermes':                         { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/hermes/Hermes', img: 'https://media.starcitizen.tools/e/e0/Hermes_flying_away_from_jump_point_-_cropped.jpg' },
+  'RSI_Ursa_Medivac':                   { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/ursa/Ursa-Medivac', img: 'https://media.starcitizen.tools/0/06/Ursa_Medivac_driving_by_Cutlass_crash_site_-_Cropped.jpg' },
+  'GAMA_Syulen':                        { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/syulen/Syulen', img: 'https://media.starcitizen.tools/0/01/Syulen_leaving_microTech.png' },
+  'RSI_Salvation':                      { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/salvation/Salvation', img: 'https://media.starcitizen.tools/2/21/Salvation_flying_away_from_world_-_cropped.jpg' },
+  'MISC_Reliant_Mako':                  { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/reliant/Reliant-Mako', img: 'https://media.starcitizen.tools/9/9f/MISC_Reliant_Mako_Landing_at_Area11.png' },
+  'ESPR_Prowler_Utility':               { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/prowler/Prowler-Utility', img: 'https://media.starcitizen.tools/6/62/Prowler_Utility_on_outpost_landing_pad_-_cropped.png' },
+  'DRAK_Golem_OX':                      { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/golem/Golem-OX', img: 'https://media.starcitizen.tools/a/a0/Golem_OX_landed_in_hangar_-_cropped.png' },
+  'KRIG_L_22_Alpha_Wolf':               { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/wolf/L-22-Alpha-Wolf', img: 'https://media.starcitizen.tools/4/4a/L-22_Alpha_Wolf_flying_above_clouds_-_cropped.jpg' },
+  'DRAK_Golem':                         { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/golem/Golem', img: 'https://media.starcitizen.tools/2/2c/Golem_using_mining_laser_in_dense_debris_field_-_cropped.png' },
+  'ANVL_Gladiator':                     { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/anvil-gladiator/Gladiator', img: 'https://media.starcitizen.tools/f/f0/Gladator_flying_over_world.png' },
+  'ANVL_F7C_R_Hornet_Tracker_Mk_II':   { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/anvil-hornet-mkii/F7C-R-Hornet-Tracker-Mk-II', img: 'https://media.starcitizen.tools/e/e7/F7C-M_MkII_flying_over_mountains_-_cropped.png' },
+  'RSI_Aurora_Mk_I_SE':                 { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/rsi-aurora/Aurora-Mk-I-SE', img: 'https://media.starcitizen.tools/a/ac/Aurora_Mk_I_SE_flying_over_planetary_space_station_-_cropped.jpg' },
+  'ARGO_A_T_L_S_':                      { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/atls/ATLS', img: 'https://media.starcitizen.tools/2/2f/ATLS_in_cargo_elevator_-_cropped.jpg' },
+  'ARGO_ATLS_GEO':                      { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/atls/ATLS-GEO', img: 'https://media.starcitizen.tools/9/95/ATLS_GEO_x3_landing_in_sandy_area_-_cropped.jpg' },
+  'ANVL_Legionnaire':                   { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/legionnaire/Legionnaire', img: 'https://media.starcitizen.tools/f/f1/Legionnaire_flying_formation.jpg' },
+  'ANVL_Paladin':                       { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/paladin/Paladin', img: 'https://media.starcitizen.tools/0/07/Paladin_landed_in_hangar_-_cropped_2.png' },
+  'CRUS_Spirit_A1':                     { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/spirit/A1-Spirit', img: 'https://media.starcitizen.tools/6/66/A1_x2_bombing_ground_vehicle_attackers_-_Cut.jpg' },
+  'CRUS_Spirit_C1':                     { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/spirit/C1-Spirit', img: 'https://media.starcitizen.tools/9/95/Crusader_C1_Spirit_at_Winners_Circle.png' },
+  'CRUS_Spirit_E1':                     { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/spirit/E1-Spirit', img: 'https://media.starcitizen.tools/d/d4/Spirit_E1_flying_fast_over_Orison_-_cropped.jpg' },
+  'GRIN_MDC':                           { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/mdc/MDC', img: 'https://media.starcitizen.tools/9/91/MDC_in_forest_beside_shipreck_-_cropped.jpg' },
+  'GRIN_MTC':                           { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/mtc/MTC', img: 'https://media.starcitizen.tools/a/a9/MTC_on_top_of_rocky_outcrop_-_cropped.png' },
+  'AEGS_Avenger_Titan':                 { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/aegis-avenger/Avenger-Titan', img: 'https://media.starcitizen.tools/4/4b/Avenger_Titan_3.2_sale_Titan_01-Squashed.jpg' },
+  'ANVL_Liberator':                     { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/liberator/Liberator', img: 'https://media.starcitizen.tools/d/d3/Anvil-liberator-promo-05.png' },
+  'ARGO_CSV_SM':                        { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/csv/CSV-SM', img: 'https://media.starcitizen.tools/8/89/CSV-SM_driving_through_snowy_outpost_-_cropped.png' },
+  'ARGO_MOTH':                          { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/moth/MOTH', img: 'https://media.starcitizen.tools/c/c2/MOTH_in_debris_field_with_arms_extended_-_cropped.jpg' },
+  'ARGO_RAFT':                          { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/raft/RAFT', img: 'https://media.starcitizen.tools/b/bb/RAFT_-_Flying_over_Lorville_-_cropped_and_adjusted.jpg' },
+  'ARGO_SRV':                           { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/argo-srv/SRV', img: 'https://media.starcitizen.tools/5/5a/SRV_towing_cargo_container_into_hangar_-_Cut.png' },
+  'CNOU_Mustang_Delta':                 { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/mustang/Mustang-Delta', img: 'https://media.starcitizen.tools/5/5b/Mustang_Delta_Invictus_2950_promo_shot_-_cropped_contrast_adjusted.png' },
+  'CRUS_Star_Runner':                   { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/crusader-mercury-star-runner/Mercury', img: 'https://media.starcitizen.tools/e/e7/Mercury_-_flying_over_clouds.jpg' },
+  'DRAK_Clipper':                       { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/clipper/Clipper', img: 'https://media.starcitizen.tools/7/75/Clipper_x2_flying_over_rocky_world.jpg' },
+  'GRIN_UTV':                           { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/utv/UTV', img: 'https://media.starcitizen.tools/2/20/UTV_on_sand_-_Cropped.webp' },
+  'GREY_Shiv':                          { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/shiv/Shiv', img: 'https://media.starcitizen.tools/8/83/Shiv_flying_through_debris_field_firing_weapons_-_cropped_and_adjusted.jpg' },
+  'MISC_Starlancer_TAC':                { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/starlancer/Starlancer-TAC', img: 'https://media.starcitizen.tools/a/a8/Starlancer_TAC_attacks_surrounding_ships_2_-_cropped.png' },
+  'AEGS_Vulcan':                        { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/vulcan/Vulcan', img: 'https://media.starcitizen.tools/c/c3/Vulcan_-_Flying_repairing_Eclipse_with_drones.jpg' },
+  'DRAK_Vulture':                       { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/drake-vulture/Vulture', img: 'https://media.starcitizen.tools/b/b8/Vulture_flying_through_debris_field.jpg' },
+  'MISC_Hull_B':                        { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/hull/Hull-B', img: 'https://media.starcitizen.tools/6/65/Hull_B_landed_in_hangar.png' },
+  'MISC_Prospector':                    { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/misc-prospector/Prospector', img: 'https://media.starcitizen.tools/d/dd/Prospector_-_Hovering_mining_on_cliffside_1.jpg' },
+  'RSI_Ursa':                           { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/ursa/Ursa', img: 'https://media.starcitizen.tools/1/15/Ursa_3.1.4_01.png' },
+  'RSI_Aurora_Mk_II':                   { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/aurora-mk-ii/Aurora-Mk-II', img: 'https://media.starcitizen.tools/1/1f/Aurora_Mk_II_x3_flying_close_to_mountains_-_cropped.jpg' },
+  'ANVL_Asgard':                        { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/anvil-asgard/Asgard', img: 'https://media.starcitizen.tools/1/17/Asgard_flying_through_debris_shooting_back_at_ships_-_cropped.jpg' },
+  'RSI_Scorpius':                       { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/scorpius/Scorpius', img: 'https://media.starcitizen.tools/3/30/RSI_Scorpius_on_ArcCorp.png' },
+  'MRAI_Guardian_MX':                   { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/guardian/Guardian-MX', img: 'https://media.starcitizen.tools/e/e5/Guardian_MX_x2_flying_low_and_fast_over_world_-_cropped.png' },
+  'ANVL_F7C_M_Super_Hornet_Mk_II':      { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/anvil-hornet-mkii/F7C-M-Super-Hornet-Mk-II', img: 'https://media.starcitizen.tools/e/e7/F7C-M_MkII_flying_over_mountains_-_cropped.png' },
+  'DRAK_Dragonfly_Star_Kitten_Edition': { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/drake-dragonfly/Dragonfly-Black', img: 'https://media.starcitizen.tools/3/3b/Dragonfly_Star_Kitten_in_a_hangar.jpg' },
+  'AEGS_Gladius':                       { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/gladius/Gladius', img: 'https://media.starcitizen.tools/0/0c/Gladius_-_Flying_away_from_world_through_debris.jpg' },
+  'DRAK_Ironclad':                      { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/ironclad/Ironclad', img: 'https://media.starcitizen.tools/d/d9/Ironclad_x2_floating_over_sandy_world_-_Cropped.jpg' },
+  'RSI_Apollo_Medivac':                 { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/rsi-apollo/Apollo-Medivac', img: 'https://media.starcitizen.tools/e/e4/Apollo_Medivac_flying_over_crash_site_-_cropped_and_adjusted.png' },
+  'DRAK_Dragonfly':                     { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/drake-dragonfly/Dragonfly-Black', img: 'https://media.starcitizen.tools/c/c7/Dragonfly_x2_flying_away_from_explosion.jpg' },
+  'RSI_Perseus':                        { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/perseus/Perseus', img: 'https://media.starcitizen.tools/6/6c/Perseus_angled_combat.jpg' },
+  'ORIG_600i':                          { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/600i/600i-Explorer', img: 'https://media.starcitizen.tools/a/ac/600i_Flying_over_Microtech_-_cropped.png' },
+  'DRAK_Cutlass_Black':                 { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/drake-cutlass/Cutlass-Black', img: 'https://media.starcitizen.tools/3/31/Cutlass_Black_in_SelfLand_-_Isometric.jpg' },
+  'RSI_Zeus_Mk_II_CL':                  { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/zeus-mk-ii/Zeus-Mk-II-CL', img: 'https://media.starcitizen.tools/d/d6/Zeus_mkII_CL_landed_loading_cargo_-_cropped.png' },
+};
+
+// ═══════════════════════════════════════════════════════
+//  APPLICATION STATE
+// ═══════════════════════════════════════════════════════
+let fleet = [];
+let loreData = {};      // ship_uid → lore string
+let wings = [];         // [{id, name}]
+let assignments = {};   // ship_uid → wing_id
+let currentView = 'shipyard';
+let activeShipUID = null;
+let dragSrcUID = null;
+
+const STORE_KEYS = {
+  fleet:       'manifest_fleet_v1',
+  lore:        'manifest_lore_v1',
+  wings:       'manifest_wings_v1',
+  assignments: 'manifest_assignments_v1',
+};
+
+function save() {
+  localStorage.setItem(STORE_KEYS.lore, JSON.stringify(loreData));
+  localStorage.setItem(STORE_KEYS.wings, JSON.stringify(wings));
+  localStorage.setItem(STORE_KEYS.assignments, JSON.stringify(assignments));
+}
+
+function loadFromStorage() {
+  const rawFleet = localStorage.getItem(STORE_KEYS.fleet);
+  fleet = rawFleet ? JSON.parse(rawFleet) : EMBEDDED_FLEET;
+  loreData = JSON.parse(localStorage.getItem(STORE_KEYS.lore) || '{}');
+  wings = JSON.parse(localStorage.getItem(STORE_KEYS.wings) || '[]');
+  assignments = JSON.parse(localStorage.getItem(STORE_KEYS.assignments) || '{}');
+}
+
+function getUID(ship, index) {
+  // unique ID per ship: pledge_id + ship_code + index
+  return `${ship.pledge_id}_${ship._override_code || ship.ship_code}_${index}`;
+}
+
+function getShipCode(ship) {
+  return ship._override_code || ship.ship_code;
+}
+
+function getDisplayName(ship) {
+  if (ship._fixed_name) return ship._fixed_name;
+  if (ship.ship_name && ship.ship_name !== '[unidentified]') return ship.ship_name;
+  return ship.name;
+}
+
+function getRSIData(ship) {
+  return RSI_SHIP_DATA[getShipCode(ship)] || null;
+}
+
+// ═══════════════════════════════════════════════════════
+//  STARFIELD
+// ═══════════════════════════════════════════════════════
+function initStarfield() {
+  const canvas = document.getElementById('stars-canvas');
+  const ctx = canvas.getContext('2d');
+  let stars = [];
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  function createStars() {
+    stars = [];
+    for (let i = 0; i < 280; i++) {
+      stars.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        r: Math.random() * 1.2 + 0.2,
+        a: Math.random() * 0.7 + 0.1,
+        speed: Math.random() * 0.15 + 0.02
+      });
+    }
+  }
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    stars.forEach(s => {
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(180,210,230,${s.a})`;
+      ctx.fill();
+      s.y -= s.speed;
+      if (s.y < -2) { s.y = canvas.height + 2; s.x = Math.random() * canvas.width; }
+    });
+    requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize', () => { resize(); createStars(); });
+  resize(); createStars(); draw();
+}
+
+// ═══════════════════════════════════════════════════════
+//  ENTRY SCREEN
+// ═══════════════════════════════════════════════════════
+function initEntry() {
+  const ltiCount = fleet.filter(s => s.lti).length;
+  const mfrSet = new Set(fleet.map(s => s.manufacturer_code));
+  document.getElementById('entry-ship-count').textContent = fleet.length;
+  document.getElementById('entry-mfr-count').textContent = mfrSet.size;
+  document.getElementById('entry-lti-count').textContent = ltiCount;
+}
+
+function enterBridge() {
+  const entry = document.getElementById('entry-screen');
+  entry.classList.add('dissolving');
+  setTimeout(() => {
+    entry.style.display = 'none';
+    const app = document.getElementById('app');
+    app.classList.add('visible');
+    renderAll();
+  }, 850);
+}
+
+// ═══════════════════════════════════════════════════════
+//  CARD BUILDER
+// ═══════════════════════════════════════════════════════
+function buildCard(ship, uid) {
+  const rsi = getRSIData(ship);
+  const name = getDisplayName(ship);
+  const lore = loreData[uid] || '';
+  const hasLore = lore.trim().length > 0;
+  const isUnid = !!(ship.unidentified && !ship._fixed_name);
+
+  const card = document.createElement('div');
+  card.className = 'ship-card' + (hasLore ? ' has-lore' : '');
+  card.dataset.uid = uid;
+  card.draggable = true;
+
+  // Image
+  if (rsi && rsi.img) {
+    const img = document.createElement('img');
+    img.className = 'ship-card-img';
+    img.src = rsi.img;
+    img.alt = name;
+    img.loading = 'lazy';
+    img.onerror = function() { this.style.display='none'; };
+    card.appendChild(img);
+  } else {
+    const ph = document.createElement('div');
+    ph.className = 'ship-card-img-placeholder';
+    ph.innerHTML = `<svg viewBox="0 0 60 60" fill="none"><path d="M10 40 L30 15 L50 40 Z" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="30" cy="12" r="3" fill="currentColor"/></svg>`;
+    card.appendChild(ph);
+  }
+
+  // Badges
+  const badges = document.createElement('div');
+  badges.className = 'ship-card-badges';
+  if (ship.lti) badges.innerHTML += `<span class="badge badge-lti">LTI</span>`;
+  if (hasLore) badges.innerHTML += `<span class="badge badge-lore">LOG</span>`;
+  if (isUnid) badges.innerHTML += `<span class="badge badge-unid">UNK</span>`;
+  card.appendChild(badges);
+
+  // Body
+  const body = document.createElement('div');
+  body.className = 'ship-card-body';
+  body.innerHTML = `
+    <div class="ship-card-mfr">${ship.manufacturer_name}</div>
+    <div class="ship-card-name">${name}</div>
+  `;
+  card.appendChild(body);
+
+  card.addEventListener('click', () => openFleetModal(ship, uid));
+  card.addEventListener('dragstart', e => { dragSrcUID = uid; card.classList.add('dragging'); });
+  card.addEventListener('dragend', () => { dragSrcUID = null; card.classList.remove('dragging'); });
+
+  return card;
+}
+
+// ═══════════════════════════════════════════════════════
+//  RENDER: BY ACQUISITION
+// ═══════════════════════════════════════════════════════
+function renderAcquisition() {
+  const panel = document.getElementById('view-acquisition');
+  panel.innerHTML = '';
+
+  // Group by pledge_id (package), then sort packages by date
+  const groups = {};
+  const fleetWithUIDs = fleet.map((ship, i) => ({ ship, uid: getUID(ship, i) }));
+  const filtered_fleet = filterFleet(fleetWithUIDs);
+  filtered_fleet.forEach(({ ship, uid }) => {
+    const key = ship.pledge_id;
+    if (!groups[key]) groups[key] = { name: cleanPledgeName(ship.pledge_name), date: ship.pledge_date, ships: [] };
+    groups[key].ships.push({ ship, uid });
+  });
+
+  const AQ_PAGE_SIZE = 6;
+  const aqPanel = document.getElementById('view-acquisition');
+  let aqPage = parseInt(aqPanel.dataset.page || '0');
+  const sorted = Object.values(groups).sort((a, b) => new Date(b.date) - new Date(a.date));
+  const totalAqPages = Math.ceil(sorted.length / AQ_PAGE_SIZE);
+  aqPage = Math.min(aqPage, totalAqPages - 1);
+  const pageSortedAq = sorted.slice(aqPage * AQ_PAGE_SIZE, (aqPage + 1) * AQ_PAGE_SIZE);
+  pageSortedAq.forEach(group => {
+    const section = document.createElement('div');
+    const header = document.createElement('div');
+    header.className = 'section-header';
+    header.innerHTML = `
+      <div class="section-header-label">${group.name}</div>
+      <div class="section-header-count">${group.ships.length} vessel${group.ships.length!==1?'s':''} · ${group.date}</div>
+      <div class="section-header-line"></div>
+    `;
+    section.appendChild(header);
+
+    const grid = document.createElement('div');
+    grid.className = 'ships-grid';
+    group.ships.forEach(({ ship, uid }) => grid.appendChild(buildCard(ship, uid)));
+    section.appendChild(grid);
+    panel.appendChild(section);
+  });
+
+  if (totalAqPages > 1) {
+    const pag = document.createElement('div');
+    pag.style.cssText = 'display:flex;justify-content:center;align-items:center;gap:8px;margin-top:8px;padding-bottom:40px;';
+    const mkBtn = (label, page, disabled) => {
+      const b = document.createElement('button');
+      b.className = 'sq-btn';
+      b.textContent = label;
+      b.disabled = disabled;
+      if (disabled) b.style.opacity = '0.3';
+      b.onclick = () => { aqPanel.dataset.page = page; renderAcquisition(); };
+      return b;
+    };
+    pag.appendChild(mkBtn('◀◀', 0, aqPage === 0));
+    pag.appendChild(mkBtn('◀', aqPage - 1, aqPage === 0));
+    const info = document.createElement('span');
+    info.style.cssText = 'font-family:var(--font-mono);font-size:10px;color:var(--text-secondary);padding:0 8px;';
+    info.textContent = `${aqPage+1} / ${totalAqPages}  (${sorted.length} acquisitions)`;
+    pag.appendChild(info);
+    pag.appendChild(mkBtn('▶', aqPage + 1, aqPage >= totalAqPages-1));
+    pag.appendChild(mkBtn('▶▶', totalAqPages-1, aqPage >= totalAqPages-1));
+    panel.appendChild(pag);
+  }
+}
+
+function cleanPledgeName(name) {
+  return name
+    .replace(/^(Standalone Ships? - |Package - |Packs? - )/, '')
+    .replace(/ - \d{2} Year$/, '')
+    .replace(/ \(LTI\)$/, '');
+}
+
+// ═══════════════════════════════════════════════════════
+//  RENDER: BY SHIPYARD
+// ═══════════════════════════════════════════════════════
+function renderShipyard() {
+  const panel = document.getElementById('view-shipyard');
+  panel.innerHTML = '';
+
+  const groups = {};
+  const fleetWithUIDs_sy = fleet.map((ship, i) => ({ ship, uid: getUID(ship, i) }));
+  const filtered_sy = filterFleet(fleetWithUIDs_sy);
+  filtered_sy.forEach(({ ship, uid }) => {
+    const key = ship.manufacturer_name;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push({ ship, uid });
+  });
+
+  const SY_PAGE_SIZE = 6; // manufacturers per page
+  const syPanel = document.getElementById('view-shipyard');
+  let syPage = parseInt(syPanel.dataset.page || '0');
+  const sorted = Object.keys(groups).sort();
+  const totalSyPages = Math.ceil(sorted.length / SY_PAGE_SIZE);
+  syPage = Math.min(syPage, totalSyPages - 1);
+  const pageSorted = sorted.slice(syPage * SY_PAGE_SIZE, (syPage + 1) * SY_PAGE_SIZE);
+  pageSorted.forEach(mfr => {
+    const ships = groups[mfr];
+    const section = document.createElement('div');
+    const header = document.createElement('div');
+    header.className = 'section-header';
+    header.innerHTML = `
+      <div class="section-header-label">${mfr}</div>
+      <div class="section-header-count">${ships.length} hull${ships.length!==1?'s':''}</div>
+      <div class="section-header-line"></div>
+    `;
+    section.appendChild(header);
+
+    const grid = document.createElement('div');
+    grid.className = 'ships-grid';
+    ships.forEach(({ ship, uid }) => grid.appendChild(buildCard(ship, uid)));
+    section.appendChild(grid);
+    panel.appendChild(section);
+  });
+
+  // Pagination for shipyard
+  if (totalSyPages > 1) {
+    const pag = document.createElement('div');
+    pag.style.cssText = 'display:flex;justify-content:center;align-items:center;gap:8px;margin-top:8px;padding-bottom:40px;';
+    const mkBtn = (label, page, disabled) => {
+      const b = document.createElement('button');
+      b.className = 'sq-btn';
+      b.textContent = label;
+      b.disabled = disabled;
+      if (disabled) b.style.opacity = '0.3';
+      b.onclick = () => { syPanel.dataset.page = page; renderShipyard(); };
+      return b;
+    };
+    pag.appendChild(mkBtn('◀◀', 0, syPage === 0));
+    pag.appendChild(mkBtn('◀', syPage - 1, syPage === 0));
+    const info = document.createElement('span');
+    info.style.cssText = 'font-family:var(--font-mono);font-size:10px;color:var(--text-secondary);padding:0 8px;';
+    info.textContent = `${syPage+1} / ${totalSyPages}  (${sorted.length} shipyards)`;
+    pag.appendChild(info);
+    pag.appendChild(mkBtn('▶', syPage + 1, syPage >= totalSyPages-1));
+    pag.appendChild(mkBtn('▶▶', totalSyPages-1, syPage >= totalSyPages-1));
+    panel.appendChild(pag);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  RENDER: WINGS & SQUADRONS
+// ═══════════════════════════════════════════════════════
+function renderSquadrons() {
+  const wingsList = document.getElementById('wings-list');
+  wingsList.innerHTML = '';
+
+  wings.forEach(wing => {
+    const assigned = fleet
+      .map((ship, i) => ({ ship, uid: getUID(ship, i) }))
+      .filter(({ uid }) => assignments[uid] === wing.id);
+
+    const block = document.createElement('div');
+    block.className = 'squadron-block';
+    block.innerHTML = `
+      <div class="squadron-header">
+        <div class="squadron-name-display">${wing.name}</div>
+        <div class="squadron-ship-count">${assigned.length} vessel${assigned.length!==1?'s':''}</div>
+        <button class="sq-btn danger" onclick="deleteWing('${wing.id}')">DISBAND</button>
+      </div>
+    `;
+
+    const zone = document.createElement('div');
+    zone.className = 'squadron-drop-zone' + (assigned.length > 0 ? ' has-ships' : '');
+    zone.dataset.wingId = wing.id;
+
+    if (assigned.length === 0) {
+      zone.innerHTML = `<div class="drop-hint">— DRAG VESSELS HERE TO ASSIGN —</div>`;
+    } else {
+      assigned.forEach(({ ship, uid }) => zone.appendChild(buildCard(ship, uid)));
+    }
+
+    setupDropZone(zone);
+    block.appendChild(zone);
+    wingsList.appendChild(block);
+  });
+
+  // Unassigned pool
+  const unassigned = fleet
+    .map((ship, i) => ({ ship, uid: getUID(ship, i) }))
+    .filter(({ uid }) => !assignments[uid]);
+
+  document.getElementById('unassigned-count').textContent = `${unassigned.length} vessel${unassigned.length!==1?'s':''}`;
+  const pool = document.getElementById('unassigned-pool-grid');
+  pool.innerHTML = '';
+  pool.dataset.wingId = 'unassigned';
+
+  if (unassigned.length === 0) {
+    pool.innerHTML = `<div class="drop-hint">All vessels assigned to wings</div>`;
+    pool.classList.remove('has-ships');
+    pool.classList.add('squadron-drop-zone');
+  } else {
+    pool.classList.add('has-ships');
+    pool.classList.remove('squadron-drop-zone');
+    unassigned.forEach(({ ship, uid }) => pool.appendChild(buildCard(ship, uid)));
+  }
+
+  setupDropZone(pool);
+}
+
+function setupDropZone(zone) {
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    if (!dragSrcUID) return;
+    const wingId = zone.dataset.wingId;
+    if (wingId === 'unassigned') {
+      delete assignments[dragSrcUID];
+    } else {
+      assignments[dragSrcUID] = wingId;
+    }
+    save();
+    renderSquadrons();
+    // Refresh squadron pill in detail panel if open
+    if (activeShipUID) refreshDetailSquadronPills();
+  });
+}
+
+function createWing() {
+  const input = document.getElementById('new-wing-input');
+  const name = input.value.trim();
+  if (!name) return;
+  wings.push({ id: Date.now().toString(), name });
+  input.value = '';
+  save();
+  renderSquadrons();
+  showToast('Wing formed: ' + name);
+}
+
+function deleteWing(id) {
+  wings = wings.filter(w => w.id !== id);
+  Object.keys(assignments).forEach(uid => { if (assignments[uid] === id) delete assignments[uid]; });
+  save();
+  renderSquadrons();
+  if (activeShipUID) refreshDetailSquadronPills();
+}
+
+// ═══════════════════════════════════════════════════════
+//  DETAIL PANEL
+// ═══════════════════════════════════════════════════════
+function openDetail(ship, uid) {
+  activeShipUID = uid;
+  const rsi = getRSIData(ship);
+  const name = getDisplayName(ship);
+
+  // Hero image
+  const img = document.getElementById('detail-img');
+  if (rsi && rsi.img) {
+    img.src = rsi.img;
+    img.style.display = '';
+  } else {
+    img.style.display = 'none';
+  }
+
+  document.getElementById('detail-mfr').textContent = ship.manufacturer_name;
+  document.getElementById('detail-name').textContent = name;
+
+  const link = document.getElementById('detail-rsi-link');
+  if (rsi && rsi.rsiUrl) {
+    link.href = rsi.rsiUrl;
+    link.style.display = '';
+  } else {
+    link.style.display = 'none';
+  }
+
+  // Badges
+  const badges = document.getElementById('detail-badges');
+  badges.innerHTML = '';
+  if (ship.lti) badges.innerHTML += `<span class="badge badge-lti">LIFETIME INSURANCE</span>`;
+  if (ship.unidentified && !ship._fixed_name) badges.innerHTML += `<span class="badge badge-unid">UNIDENTIFIED</span>`;
+
+  // Meta
+  document.getElementById('detail-pledge').textContent = cleanPledgeName(ship.pledge_name);
+  document.getElementById('detail-date').textContent = ship.pledge_date;
+  document.getElementById('detail-cost').textContent = ship.pledge_cost === '$0.00 USD' ? 'Earned / Referral' : ship.pledge_cost;
+  document.getElementById('detail-lti').textContent = ship.lti ? 'Lifetime Insurance' : 'Standard Policy';
+
+  // Lore
+  const loreInput = document.getElementById('lore-input');
+  loreInput.value = loreData[uid] || '';
+  document.getElementById('lore-save-hint').textContent = 'autosaved to local registry';
+  document.getElementById('lore-save-hint').classList.remove('saved');
+
+  loreInput.oninput = () => {
+    loreData[uid] = loreInput.value;
+    save();
+    const hint = document.getElementById('lore-save-hint');
+    hint.textContent = '✓ log entry saved';
+    hint.classList.add('saved');
+    setTimeout(() => {
+      hint.textContent = 'autosaved to local registry';
+      hint.classList.remove('saved');
+    }, 2000);
+  };
+
+  refreshDetailSquadronPills();
+  // Restore elements that DB mode may have hidden
+  document.getElementById('lore-input').style.display = '';
+  document.getElementById('lore-save-hint').style.display = '';
+  document.getElementById('squadron-assign-section').style.display = '';
+  let dbExtra = document.getElementById('db-detail-extra');
+  if (dbExtra) dbExtra.remove();
+
+  document.getElementById('detail-panel').classList.add('open');
+}
+
+function refreshDetailSquadronPills() {
+  const list = document.getElementById('squadron-pill-list');
+  list.innerHTML = '';
+  if (wings.length === 0) {
+    list.innerHTML = `<span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:0.15em;">No wings formed — create one in Wings &amp; Squadrons</span>`;
+    return;
+  }
+  wings.forEach(wing => {
+    const isActive = assignments[activeShipUID] === wing.id;
+    const pill = document.createElement('button');
+    pill.className = 'squadron-pill' + (isActive ? ' active' : '');
+    pill.textContent = wing.name;
+    pill.onclick = () => {
+      assignments[activeShipUID] = wing.id;
+      save();
+      refreshDetailSquadronPills();
+      if (currentView === 'squadron') renderSquadrons();
+    };
+    list.appendChild(pill);
+  });
+  if (assignments[activeShipUID]) {
+    const unassign = document.createElement('button');
+    unassign.className = 'squadron-pill unassign';
+    unassign.textContent = 'Remove from wing';
+    unassign.onclick = () => {
+      delete assignments[activeShipUID];
+      save();
+      refreshDetailSquadronPills();
+      if (currentView === 'squadron') renderSquadrons();
+    };
+    list.appendChild(unassign);
+  }
+}
+
+function closeDetail() {
+  document.getElementById('detail-panel').classList.remove('open');
+  activeShipUID = null;
+}
+
+// ═══════════════════════════════════════════════════════
+//  VIEW SWITCHING
+// ═══════════════════════════════════════════════════════
+function switchView(view, btn) {
+  currentView = view;
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('view-' + view).classList.add('active');
+  if (view === 'acquisition') renderAcquisition();
+  else if (view === 'shipyard') renderShipyard();
+  else if (view === 'squadron') renderSquadrons();
+  else if (view === 'database') renderDatabase();
+  // Clear search when switching views
+  document.getElementById('search-input').value = '';
+  searchQuery = '';
+}
+
+function renderAll() {
+  document.getElementById('header-ship-count').textContent = fleet.length;
+  renderShipyard();
+}
+
+// ═══════════════════════════════════════════════════════
+//  IMPORT
+// ═══════════════════════════════════════════════════════
+function openImport() { document.getElementById('import-modal').classList.add('open'); }
+function closeImport() { document.getElementById('import-modal').classList.remove('open'); }
+
+function handleDragOver(e) { e.preventDefault(); document.getElementById('import-drop-zone').classList.add('drag-over'); }
+function handleDragLeave() { document.getElementById('import-drop-zone').classList.remove('drag-over'); }
+function handleFileDrop(e) {
+  e.preventDefault();
+  document.getElementById('import-drop-zone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) processImportFile(file);
+}
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) processImportFile(file);
+  e.target.value = '';
+}
+
+function processImportFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!Array.isArray(data)) throw new Error('Expected a JSON array');
+      // Clear and replace
+      fleet = data;
+      loreData = {};
+      wings = [];
+      assignments = {};
+      localStorage.setItem(STORE_KEYS.fleet, JSON.stringify(fleet));
+      save();
+      closeImport();
+      initEntry();
+      renderAll();
+      showToast(`Manifest updated — ${fleet.length} vessels registered`);
+    } catch (err) {
+      alert('Import failed: ' + err.message + '\nEnsure this is a valid HangarXPLOR JSON export.');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ═══════════════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════════════
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ═══════════════════════════════════════════════════════
+//  KEYBOARD
+// ═══════════════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeGallery();
+    closeShipModal();
+    closeDetail();
+    closeImport();
+  }
+  if (e.key === 'Enter' && document.getElementById('entry-screen').style.display !== 'none') {
+    enterBridge();
+  }
+});
+
+// Close detail on background click
+document.addEventListener('click', e => {
+  const panel = document.getElementById('detail-panel');
+  if (panel.classList.contains('open') &&
+      !panel.contains(e.target) &&
+      !e.target.closest('.ship-card')) {
+    closeDetail();
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+//  SHIP DATABASE (from Beacon v0.5.1 + community data)
+// ═══════════════════════════════════════════════════════
+const BEACON_DB = [{"manufacturer":"Aegis Dynamics","ship":"Avenger Stalker","price":65.0,"shipClass":"Interdiction","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S2 Missile Racks"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aegis Dynamics","ship":"Avenger Titan","price":55.0,"shipClass":"Courier","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":8,"carriedSnubs":[],"armament":["2\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S2 Missile Racks"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aegis Dynamics","ship":"Avenger Titan Renegade","price":75.0,"shipClass":"Courier","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":8,"carriedSnubs":[],"armament":["2\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S2 Missile Racks"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aegis Dynamics","ship":"Avenger Warlock","price":85.0,"shipClass":"Light Interdiction","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S3 Gun Hardpoints (pilot)","1\u00d7 EMP Generator"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aegis Dynamics","ship":"Eclipse","price":300.0,"shipClass":"Medium Bomber","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S3 Gun Hardpoints (pilot)","3\u00d7 S10 Torpedo Racks (3 torpedoes each)"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aegis Dynamics","ship":"Gladius","price":90.0,"shipClass":"Light Fighter","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["3\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S3 Missile Racks (2 missiles each)","2\u00d7 S2 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aegis Dynamics","ship":"Pirate Gladius","price":110.0,"shipClass":"Light Fighter","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["3\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S3 Missile Racks (2 missiles each)","2\u00d7 S2 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aegis Dynamics","ship":"Gladius Valiant","price":110.0,"shipClass":"Light Fighter","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["3\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S3 Missile Racks (2 missiles each)","2\u00d7 S2 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aegis Dynamics","ship":"Hammerhead","price":725.0,"shipClass":"Heavy Gunship","classWeight":"Large (Sub-Capital)","maxCrew":9,"hangarReq":"Extra Large","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":40,"carriedSnubs":[],"armament":["2\u00d7 S4 Pilot Gun Hardpoints","6\u00d7 Manned Turrets (2\u00d7 S4 guns each)"],"defenses":["4\u00d7 S3 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aegis Dynamics","ship":"Idris-M","price":1900.0,"shipClass":"Frigate","classWeight":"Large (Capital)","maxCrew":28,"hangarReq":"Capital","carrierCapable":"Y","onboardHangar":"Small","status":"Flight Ready","cargo":1326,"carriedSnubs":["MPUV Cargo"],"armament":["1\u00d7 S10 Railgun (prow)","4\u00d7 Remote Turrets (2\u00d7 S4 guns each)","2\u00d7 Manned Turrets (2\u00d7 S5 guns each)","12\u00d7 S9 Torpedo Tubes"],"defenses":["Shield Generators (multiple)","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aegis Dynamics","ship":"Idris-P","price":1900.0,"shipClass":"Frigate","classWeight":"Large (Capital)","maxCrew":28,"hangarReq":"Capital","carrierCapable":"Y","onboardHangar":"Small","status":"Flight Ready","cargo":1374,"carriedSnubs":["MPUV Cargo"],"armament":["4\u00d7 Remote Turrets (2\u00d7 S4 guns each)","2\u00d7 Manned Turrets (2\u00d7 S5 guns each)","12\u00d7 S9 Torpedo Tubes"],"defenses":["Shield Generators (multiple)","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aegis Dynamics","ship":"Nautilus","price":700.0,"shipClass":"Heavy Support","classWeight":"Large (Capital)","maxCrew":8,"hangarReq":"Capital","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":64,"carriedSnubs":[],"armament":["2\u00d7 S4 Remote Turrets (2\u00d7 S4 guns each)","Mine Deployment System"],"defenses":["2\u00d7 S5 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aegis Dynamics","ship":"Reclaimer","price":400.0,"shipClass":"Heavy Salvage","classWeight":"Large (Sub-Capital)","maxCrew":5,"hangarReq":"Extra Large","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":420,"carriedSnubs":[],"armament":["2\u00d7 Manned Turrets (2\u00d7 S2 guns each)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aegis Dynamics","ship":"Redeemer","price":330.0,"shipClass":"Medium Gunship","classWeight":"Medium","maxCrew":4,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":2,"carriedSnubs":[],"armament":["2\u00d7 S4 Pilot Gun Hardpoints","2\u00d7 Manned Turrets (2\u00d7 S3 guns each)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aegis Dynamics","ship":"Retaliator","price":150.0,"shipClass":"Medium Gunship","classWeight":"Large","maxCrew":7,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 Manned Turrets (2\u00d7 S3 guns each)","2\u00d7 Manned Turrets (2\u00d7 S2 guns each)"],"defenses":["2\u00d7 S3 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aegis Dynamics","ship":"Retaliator Bomber","price":275.0,"shipClass":"Heavy Bomber","classWeight":"Large","maxCrew":7,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 Manned Turrets (2\u00d7 S3 guns each)","2\u00d7 Manned Turrets (2\u00d7 S2 guns each)","2\u00d7 S9 Torpedo Tubes"],"defenses":["2\u00d7 S3 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aegis Dynamics","ship":"Sabre","price":175.0,"shipClass":"Medium Fighter","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S3 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aegis Dynamics","ship":"Sabre Comet","price":185.0,"shipClass":"Medium Fighter","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S3 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aegis Dynamics","ship":"Sabre Firebird","price":185.0,"shipClass":"Light Fighter","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S3 Gun Hardpoints (pilot)","1\u00d7 S5 Missile Launcher (Firestorm cluster missiles)"],"defenses":["1\u00d7 S3 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aegis Dynamics","ship":"Sabre Peregrine","price":185.0,"shipClass":"Racing","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S3 Gun Hardpoints (pilot)"],"defenses":["1\u00d7 S3 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aegis Dynamics","ship":"Sabre Raven","price":0.0,"shipClass":"Medium Interdiction","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S3 Gun Hardpoints (pilot)","1\u00d7 EMP Generator"],"defenses":["1\u00d7 S3 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aegis Dynamics","ship":"Harbinger","price":290.0,"shipClass":"Heavy Fighter/Bomber","classWeight":"Medium","maxCrew":2,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S3 Gun Hardpoints (pilot)","1\u00d7 S3 Manned Turret","2\u00d7 S3 Torpedo Racks"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aegis Dynamics","ship":"Hoplite","price":235.0,"shipClass":"Heavy Fighter/Dropship","classWeight":"Medium","maxCrew":2,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":2,"carriedSnubs":[],"armament":["2\u00d7 S3 Gun Hardpoints (pilot)","1\u00d7 S3 Remote Turret","2\u00d7 S3 Missile Racks"],"defenses":["2\u00d7 S2 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aegis Dynamics","ship":"Sentinel","price":275.0,"shipClass":"Heavy Fighter/Interdiction","classWeight":"Medium","maxCrew":2,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S3 Gun Hardpoints (pilot)","1\u00d7 EMP Generator","2\u00d7 S3 Missile Racks"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aegis Dynamics","ship":"Warden","price":260.0,"shipClass":"Heavy Fighter","classWeight":"Medium","maxCrew":2,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S3 Gun Hardpoints (pilot)","1\u00d7 S3 Manned Turret","2\u00d7 S3 Missile Racks"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aegis Dynamics","ship":"Vulcan","price":200.0,"shipClass":"Repair","classWeight":"Light","maxCrew":3,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Concept","cargo":12,"carriedSnubs":[],"armament":["2\u00d7 S1 Remote Turrets","1\u00d7 S2 Remote Turret"],"defenses":["2\u00d7 S2 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"Arrow","price":75.0,"shipClass":"Light Fighter","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S2 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"Asgard","price":350.0,"shipClass":"Heavy Transport","classWeight":"Large","maxCrew":2,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":180,"carriedSnubs":[],"armament":["4\u00d7 S4 Gun Hardpoints (pilot)","2\u00d7 Manned Turrets (2\u00d7 S4 guns each)","2\u00d7 Remote Turrets (2\u00d7 S3 guns each)"],"defenses":["4\u00d7 S4 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"Ballista","price":140.0,"shipClass":"Armor (Ground)","classWeight":"Ground*","maxCrew":2,"hangarReq":"Extra Small (Ground)","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["1\u00d7 S9 Missile Battery (8 missiles)"],"defenses":[]},{"manufacturer":"Anvil Aerospace","ship":"Pisces","price":40.0,"shipClass":"Light Transport","classWeight":"Snub","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":4,"carriedSnubs":[],"armament":["1\u00d7 S2 Turret"],"defenses":["1\u00d7 S1 Shield Generator"]},{"manufacturer":"Anvil Aerospace","ship":"Pisces Rescue","price":65.0,"shipClass":"Light Medical","classWeight":"Snub","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":4,"carriedSnubs":[],"armament":["1\u00d7 S2 Turret"],"defenses":["1\u00d7 S1 Shield Generator"]},{"manufacturer":"Anvil Aerospace","ship":"Pisces Expedition","price":45.0,"shipClass":"Light Recon/Pathfinding","classWeight":"Snub","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":4,"carriedSnubs":[],"armament":["1\u00d7 S2 Turret"],"defenses":["1\u00d7 S1 Shield Generator"]},{"manufacturer":"Anvil Aerospace","ship":"Carrack","price":600.0,"shipClass":"Expedition","classWeight":"Large (Sub-Capital)","maxCrew":6,"hangarReq":"Extra Large","carrierCapable":"Y","onboardHangar":"Tiny","status":"Flight Ready","cargo":456,"carriedSnubs":["Pisces","Ursa Rover"],"armament":["4\u00d7 S4 Remote Turrets (2\u00d7 S4 guns each)","2\u00d7 S2 Manned Turrets"],"defenses":["3\u00d7 S4 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"Carrack Expedition","price":625.0,"shipClass":"Expedition","classWeight":"Large (Sub-Capital)","maxCrew":6,"hangarReq":"Extra Large","carrierCapable":"Y","onboardHangar":"Tiny","status":"Flight Ready","cargo":456,"carriedSnubs":["Pisces Expedition","Ursa Rover"],"armament":["4\u00d7 S4 Remote Turrets (2\u00d7 S4 guns each)","2\u00d7 S2 Manned Turrets"],"defenses":["3\u00d7 S4 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"Centurion","price":125.0,"shipClass":"Armor (Ground)","classWeight":"Ground*","maxCrew":2,"hangarReq":"Extra Small (Ground)","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["1\u00d7 S7 Anti-Aircraft Battery"],"defenses":[]},{"manufacturer":"Anvil Aerospace","ship":"Crucible","price":350.0,"shipClass":"Repair","classWeight":"Large","maxCrew":8,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Concept","cargo":230,"carriedSnubs":[],"armament":["2\u00d7 S3 Remote Turrets"],"defenses":["2\u00d7 S2 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"F7A","price":0.0,"shipClass":"Medium Fighter","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S4 Gun Hardpoints (pilot)","2\u00d7 S3 Missile Racks (2 missiles each)","1\u00d7 S3 Manned Turret"],"defenses":["2\u00d7 S2 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"F7C Hornet","price":110.0,"shipClass":"Medium Fighter","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":2,"carriedSnubs":[],"armament":["4\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S3 Missile Racks (2 missiles each)","1\u00d7 S3 Manned Turret"],"defenses":["2\u00d7 S2 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"F7C Hornet Wildfire","price":185.0,"shipClass":"Medium Fighter","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":2,"carriedSnubs":[],"armament":["4\u00d7 S3 Gun Hardpoints (pilot)","4\u00d7 S3 Missile Racks (2 missiles each)","1\u00d7 S3 Manned Turret"],"defenses":["2\u00d7 S2 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"F7C-S Super Hornet","price":175.0,"shipClass":"Medium Fighter","classWeight":"Light","maxCrew":2,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["5\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S3 Missile Racks (2 missiles each)","1\u00d7 S3 Manned Turret"],"defenses":["2\u00d7 S2 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"F7C-S Super Hornet Heartseeker","price":185.0,"shipClass":"Medium Fighter","classWeight":"Light","maxCrew":2,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["5\u00d7 S3 Gun Hardpoints (pilot)","4\u00d7 S3 Missile Racks (2 missiles each)","1\u00d7 S3 Manned Turret"],"defenses":["2\u00d7 S2 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"F7C-R Hornet Tracker","price":140.0,"shipClass":"Medium Fighter/Recon","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["2\u00d7 S2 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"F7C-S Hornet Ghost","price":125.0,"shipClass":"Medium Fighter","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["2\u00d7 S2 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"F7A Mk II","price":0.0,"shipClass":"Medium Fighter","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S4 Gun Hardpoints (pilot)","2\u00d7 S3 Missile Racks (2 missiles each)","1\u00d7 S3 Manned Turret"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"F7C Hornet Mk II","price":175.0,"shipClass":"Medium Fighter","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":2,"carriedSnubs":[],"armament":["4\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S3 Missile Racks (2 missiles each)","1\u00d7 S3 Manned Turret"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"F7C-S Super Hornet Mk II","price":240.0,"shipClass":"Medium Fighter","classWeight":"Light","maxCrew":2,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["5\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S3 Missile Racks (2 missiles each)","1\u00d7 S3 Manned Turret"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"F7C-R Hornet Tracker Mk II","price":185.0,"shipClass":"Medium Fighter/Recon","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"F7C-S Hornet Ghost Mk II","price":185.0,"shipClass":"Medium Fighter","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"F8C Lightning","price":300.0,"shipClass":"Heavy Fighter","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S5 Gun Hardpoints (pilot)","2\u00d7 S4 Missile Racks (2 missiles each)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"Gladiator","price":165.0,"shipClass":"Bomber","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S4 Gun Hardpoints (pilot)","1\u00d7 S3 Manned Turret (2\u00d7 S3 guns)","4\u00d7 S5 Missile Hardpoints","1\u00d7 S4 Bomb Bay (4\u00d7 S5 bombs)"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"Hawk","price":100.0,"shipClass":"Light Fighter","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S2 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"Hurricane","price":210.0,"shipClass":"Heavy Fighter","classWeight":"Light","maxCrew":2,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S4 Gun Hardpoints (pilot)","1\u00d7 S4 Remote Turret (4\u00d7 S3 guns)","2\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["2\u00d7 S2 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"Legionnaire","price":120.0,"shipClass":"Dropship","classWeight":"Extra Light","maxCrew":2,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S3 Gun Hardpoints (pilot)","1\u00d7 S2 Remote Turret"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"Liberator","price":575.0,"shipClass":"Light Carrier","classWeight":"Large","maxCrew":2,"hangarReq":"Medium","carrierCapable":"Y","onboardHangar":"Small","status":"Concept","cargo":400,"carriedSnubs":[],"armament":["4\u00d7 S4 Remote Turrets (2\u00d7 S3 guns each)"],"defenses":["2\u00d7 S4 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"Paladin","price":300.0,"shipClass":"Gunship","classWeight":"Large","maxCrew":4,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":4,"carriedSnubs":[],"armament":["2\u00d7 S4 Pilot Gun Hardpoints","2\u00d7 S4 Manned Turrets (2\u00d7 S4 guns each)","1\u00d7 S4 Remote Turret"],"defenses":["2\u00d7 S4 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"Spartan","price":80.0,"shipClass":"Light Transport (Ground)","classWeight":"Ground*","maxCrew":1,"hangarReq":"Extra Small (Ground)","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"Anvil Aerospace","ship":"Terrapin","price":220.0,"shipClass":"Recon/Pathfinding","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["1\u00d7 S3 Remote Turret (2\u00d7 S2 guns)"],"defenses":["2\u00d7 S4 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"Terrapin Medic","price":220.0,"shipClass":"Medical","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["1\u00d7 S3 Remote Turret (2\u00d7 S2 guns)"],"defenses":["2\u00d7 S4 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"Valkyrie","price":375.0,"shipClass":"Dropship","classWeight":"Large","maxCrew":5,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":90,"carriedSnubs":[],"armament":["2\u00d7 S4 Pilot Gun Hardpoints","2\u00d7 S3 Manned Turrets (2\u00d7 S3 guns each)","1\u00d7 S3 Ramp Turret","4\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["2\u00d7 S3 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Anvil Aerospace","ship":"Valkyrie Liberator","price":375.0,"shipClass":"Dropship","classWeight":"Large","maxCrew":5,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":400,"carriedSnubs":[],"armament":["2\u00d7 S4 Pilot Gun Hardpoints","2\u00d7 S3 Manned Turrets (2\u00d7 S3 guns each)","1\u00d7 S3 Ramp Turret","4\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["2\u00d7 S3 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aopoa","ship":"Khartu-Al","price":170.0,"shipClass":"Light Fighter","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S2 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Aopoa","ship":"Nox","price":45.0,"shipClass":"Racing (Ground)","classWeight":"Ground","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["1\u00d7 S1 Gun Hardpoint"],"defenses":[]},{"manufacturer":"Aopoa","ship":"Nox Kue","price":45.0,"shipClass":"Racing (Ground)","classWeight":"Ground","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["1\u00d7 S1 Gun Hardpoint"],"defenses":[]},{"manufacturer":"Aopoa","ship":"San'Tok.Yai","price":220.0,"shipClass":"Medium Fighter","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"ARGO Astronautics","ship":"MOLE","price":315.0,"shipClass":"Mining","classWeight":"Medium","maxCrew":4,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":96,"carriedSnubs":[],"armament":[],"defenses":["1\u00d7 S2 Shield Generator"]},{"manufacturer":"ARGO Astronautics","ship":"MOLE Carbon","price":315.0,"shipClass":"Mining","classWeight":"Medium","maxCrew":4,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":96,"carriedSnubs":[],"armament":[],"defenses":["1\u00d7 S2 Shield Generator"]},{"manufacturer":"ARGO Astronautics","ship":"MOLE Talus","price":315.0,"shipClass":"Mining","classWeight":"Medium","maxCrew":4,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":96,"carriedSnubs":[],"armament":[],"defenses":["1\u00d7 S2 Shield Generator"]},{"manufacturer":"ARGO Astronautics","ship":"MPUV Cargo","price":35.0,"shipClass":"Light Freight","classWeight":"Snub","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":2,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"ARGO Astronautics","ship":"MPUV Personnel","price":40.0,"shipClass":"Light Transport","classWeight":"Snub","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"ARGO Astronautics","ship":"RAFT","price":125.0,"shipClass":"Medium Freight","classWeight":"Light","maxCrew":2,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":96,"carriedSnubs":[],"armament":["2\u00d7 S1 Remote Turrets"],"defenses":["1\u00d7 S2 Shield Generator"]},{"manufacturer":"ARGO Astronautics","ship":"SRV","price":150.0,"shipClass":"Medium Industrial","classWeight":"Medium","maxCrew":1,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":[],"defenses":["1\u00d7 S2 Shield Generator"]},{"manufacturer":"Banu","ship":"Defender","price":220.0,"shipClass":"Medium Fighter","classWeight":"Light","maxCrew":2,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S4 Gun Hardpoints (pilot)","2\u00d7 S3 Manned Turrets (2\u00d7 S3 guns each)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Banu","ship":"Merchantman","price":650.0,"shipClass":"Merchant","classWeight":"Large (Sub-Capital)","maxCrew":8,"hangarReq":"Extra Large","carrierCapable":"N","onboardHangar":"Bespoke","status":"Concept","cargo":2880,"carriedSnubs":[],"armament":["4\u00d7 S4 Remote Turrets (2\u00d7 S4 guns each)","2\u00d7 S3 Manned Turrets"],"defenses":["4\u00d7 S5 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Consolidated Outland","ship":"HoverQuad","price":25.0,"shipClass":"Light Transport (Ground)","classWeight":"Ground","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"Consolidated Outland","ship":"Mustang Alpha","price":30.0,"shipClass":"Courier","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":4,"carriedSnubs":[],"armament":["2\u00d7 S2 Gun Hardpoints (pilot)"],"defenses":["1\u00d7 S1 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Consolidated Outland","ship":"Mustang Alpha Vindicator","price":30.0,"shipClass":"Courier","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":4,"carriedSnubs":[],"armament":["2\u00d7 S2 Gun Hardpoints (pilot)","2\u00d7 S2 Missile Racks"],"defenses":["1\u00d7 S1 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Consolidated Outland","ship":"Mustang Beta","price":40.0,"shipClass":"Recon/Pathfinding","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S2 Gun Hardpoints (pilot)"],"defenses":["1\u00d7 S1 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Consolidated Outland","ship":"Mustang Delta","price":65.0,"shipClass":"Light Fighter","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S1 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Consolidated Outland","ship":"Mustang Gamma","price":55.0,"shipClass":"Racing","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S2 Gun Hardpoints (pilot)"],"defenses":["1\u00d7 S1 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Consolidated Outland","ship":"Mustang Omega","price":55.0,"shipClass":"Racing","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S2 Gun Hardpoints (pilot)"],"defenses":["1\u00d7 S1 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Consolidated Outland","ship":"Nomad","price":80.0,"shipClass":"Medium Freight","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":24,"carriedSnubs":[],"armament":["2\u00d7 S2 Gun Hardpoints (pilot)","2\u00d7 S2 Missile Racks"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Consolidated Outland","ship":"Pioneer","price":850.0,"shipClass":"Heavy Construction","classWeight":"Large (Sub-Capital)","maxCrew":10,"hangarReq":"Extra Large","carrierCapable":"Y","onboardHangar":"Small","status":"Concept","cargo":600,"carriedSnubs":[],"armament":["4\u00d7 S3 Remote Turrets"],"defenses":["2\u00d7 S4 Shield Generators"]},{"manufacturer":"Crusader Industries","ship":"Inferno","price":250.0,"shipClass":"Heavy Fighter","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["1\u00d7 S5 Gatling Cannon (pilot)","2\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S3 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Crusader Industries","ship":"Ion","price":250.0,"shipClass":"Heavy Fighter","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["1\u00d7 S5 Laser Cannon (pilot)","2\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S3 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Crusader Industries","ship":"Genesis","price":400.0,"shipClass":"Transport","classWeight":"Medium","maxCrew":8,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":403,"carriedSnubs":[],"armament":["2\u00d7 S2 Remote Turrets"],"defenses":["2\u00d7 S3 Shield Generators"]},{"manufacturer":"Crusader Industries","ship":"Hercules (A2)","price":750.0,"shipClass":"Heavy Bomber","classWeight":"Large*","maxCrew":2,"hangarReq":"Large","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":216,"carriedSnubs":[],"armament":["2\u00d7 S5 Pilot Gun Hardpoints","2\u00d7 Manned Turrets (2\u00d7 S4 guns each)","2\u00d7 S9 Bomb Bays (up to 2 bombs each)"],"defenses":["4\u00d7 S4 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Crusader Industries","ship":"Hercules (C2)","price":400.0,"shipClass":"Heavy Transport","classWeight":"Large*","maxCrew":2,"hangarReq":"Large","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":696,"carriedSnubs":[],"armament":["2\u00d7 S5 Pilot Gun Hardpoints","2\u00d7 Manned Turrets (2\u00d7 S4 guns each)"],"defenses":["4\u00d7 S4 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Crusader Industries","ship":"Hercules (M2)","price":520.0,"shipClass":"Heavy Transport","classWeight":"Large*","maxCrew":2,"hangarReq":"Large","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":468,"carriedSnubs":[],"armament":["2\u00d7 S5 Pilot Gun Hardpoints","2\u00d7 Manned Turrets (2\u00d7 S4 guns each)","4\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["4\u00d7 S4 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Crusader Industries","ship":"Intrepid","price":65.0,"shipClass":"Light Freight","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":8,"carriedSnubs":[],"armament":["2\u00d7 S2 Gun Hardpoints (pilot)"],"defenses":["1\u00d7 S1 Shield Generator"]},{"manufacturer":"Crusader Industries","ship":"Mercury Star Runner","price":260.0,"shipClass":"Courier","classWeight":"Large","maxCrew":3,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":114,"carriedSnubs":[],"armament":["2\u00d7 S3 Remote Turrets (2\u00d7 S2 guns each)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Crusader Industries","ship":"Spirit (A1)","price":200.0,"shipClass":"Bomber","classWeight":"Light","maxCrew":2,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S3 Pilot Gun Hardpoints","1\u00d7 S3 Remote Turret","2\u00d7 S3 Missile Racks (2 missiles each)","4\u00d7 S4 Bomb Hardpoints"],"defenses":["2\u00d7 S2 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Crusader Industries","ship":"Spirit (C1)","price":125.0,"shipClass":"Medium Freight","classWeight":"Light","maxCrew":2,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":64,"carriedSnubs":[],"armament":["2\u00d7 S3 Pilot Gun Hardpoints","1\u00d7 S3 Remote Turret"],"defenses":["2\u00d7 S2 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Crusader Industries","ship":"Spirit (E1)","price":150.0,"shipClass":"Transport","classWeight":"Light","maxCrew":2,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Concept","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S3 Pilot Gun Hardpoints","1\u00d7 S3 Remote Turret"],"defenses":["2\u00d7 S2 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Drake Interplanetary","ship":"Buccaneer","price":110.0,"shipClass":"Light Fighter","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S2 Gun Hardpoints (pilot)","2\u00d7 S2 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Drake Interplanetary","ship":"Caterpillar","price":330.0,"shipClass":"Heavy Freight","classWeight":"Large*","maxCrew":5,"hangarReq":"Large","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":576,"carriedSnubs":[],"armament":["1\u00d7 S4 Manned Nose Turret (2\u00d7 S4 guns)","2\u00d7 S3 Remote Turrets (2\u00d7 S2 guns each)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Drake Interplanetary","ship":"Pirate Caterpillar","price":330.0,"shipClass":"Heavy Freight","classWeight":"Large*","maxCrew":5,"hangarReq":"Large","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":576,"carriedSnubs":[],"armament":["1\u00d7 S4 Manned Nose Turret (2\u00d7 S4 guns)","2\u00d7 S3 Remote Turrets (2\u00d7 S2 guns each)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Drake Interplanetary","ship":"Clipper","price":150.0,"shipClass":"Courier","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":32,"carriedSnubs":[],"armament":["2\u00d7 S3 Pilot Gun Hardpoints","1\u00d7 S3 Remote Turret"],"defenses":["1\u00d7 S3 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Drake Interplanetary","ship":"Corsair","price":250.0,"shipClass":"Expedition","classWeight":"Large*","maxCrew":4,"hangarReq":"Large","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":72,"carriedSnubs":[],"armament":["4\u00d7 S3 Pilot Gun Hardpoints","1\u00d7 S4 Manned Turret (2\u00d7 S4 guns)","2\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Drake Interplanetary","ship":"Cutlass Black","price":110.0,"shipClass":"Medium Freight","classWeight":"Medium","maxCrew":2,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":46,"carriedSnubs":[],"armament":["2\u00d7 S3 Pilot Gun Hardpoints","1\u00d7 S3 Manned Turret (2\u00d7 S2 guns)","2\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["2\u00d7 S2 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Drake Interplanetary","ship":"Cutlass Blue","price":175.0,"shipClass":"Interdiction","classWeight":"Medium","maxCrew":3,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":12,"carriedSnubs":[],"armament":["4\u00d7 S3 Pilot Gun Hardpoints","1\u00d7 S3 Remote Turret (2\u00d7 S2 guns)","2\u00d7 S3 Missile Racks (2 missiles each)","1\u00d7 Tractor Beam"],"defenses":["2\u00d7 S2 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Drake Interplanetary","ship":"Cutlass Red","price":135.0,"shipClass":"Medical","classWeight":"Medium","maxCrew":2,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S3 Pilot Gun Hardpoints","1\u00d7 S3 Manned Turret (2\u00d7 S2 guns)"],"defenses":["2\u00d7 S2 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Drake Interplanetary","ship":"Cutlass Steel","price":235.0,"shipClass":"Dropship","classWeight":"Medium","maxCrew":3,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S3 Pilot Gun Hardpoints","1\u00d7 S3 Manned Turret (2\u00d7 S3 guns)","2\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Drake Interplanetary","ship":"Cutter","price":45.0,"shipClass":"Courier","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":4,"carriedSnubs":[],"armament":["2\u00d7 S2 Pilot Gun Hardpoints"],"defenses":["1\u00d7 S1 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Drake Interplanetary","ship":"Cutter Rambler","price":50.0,"shipClass":"Light Recon/Pathfinding","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":2,"carriedSnubs":[],"armament":["2\u00d7 S2 Pilot Gun Hardpoints","2\u00d7 S2 Missile Racks"],"defenses":["1\u00d7 S1 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Drake Interplanetary","ship":"Cutter Scout","price":50.0,"shipClass":"Light Recon/Pathfinding","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":2,"carriedSnubs":[],"armament":["2\u00d7 S2 Pilot Gun Hardpoints"],"defenses":["1\u00d7 S1 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Drake Interplanetary","ship":"Dragonfly","price":40.0,"shipClass":"Racing (Ground)","classWeight":"Ground","maxCrew":2,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["1\u00d7 S1 Gun Hardpoint"],"defenses":[]},{"manufacturer":"Drake Interplanetary","ship":"Dragonfly Yellowjacket","price":45.0,"shipClass":"Racing (Ground)","classWeight":"Ground","maxCrew":2,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["1\u00d7 S1 Gun Hardpoint"],"defenses":[]},{"manufacturer":"Drake Interplanetary","ship":"Herald","price":80.0,"shipClass":"Courier","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["1\u00d7 S2 Remote Turret (2\u00d7 S1 guns)"],"defenses":["1\u00d7 S1 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Drake Interplanetary","ship":"Ironclad","price":450.0,"shipClass":"Heavy Freight","classWeight":"Large (Sub-Capital)","maxCrew":6,"hangarReq":"Extra Large","carrierCapable":"N","onboardHangar":"","status":"Concept","cargo":1536,"carriedSnubs":[],"armament":["2\u00d7 S4 Remote Turrets (2\u00d7 S3 guns each)","2\u00d7 S3 Remote Turrets"],"defenses":["2\u00d7 S4 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Drake Interplanetary","ship":"Ironclad Assault","price":535.0,"shipClass":"Heavy Freight","classWeight":"Large (Sub-Capital)","maxCrew":6,"hangarReq":"Extra Large","carrierCapable":"N","onboardHangar":"","status":"Concept","cargo":1152,"carriedSnubs":[],"armament":["2\u00d7 S4 Remote Turrets (2\u00d7 S3 guns each)","2\u00d7 S3 Remote Turrets","4\u00d7 S4 Missile Racks"],"defenses":["2\u00d7 S4 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Drake Interplanetary","ship":"Kraken","price":1650.0,"shipClass":"Medium Carrier","classWeight":"Large (Capital)","maxCrew":10,"hangarReq":"Capital","carrierCapable":"Y","onboardHangar":"Small","status":"Concept","cargo":3792,"carriedSnubs":[],"armament":["4\u00d7 S5 Remote Turrets (2\u00d7 S5 guns each)","4\u00d7 S3 Remote Turrets (2\u00d7 S2 guns each)"],"defenses":["4\u00d7 S5 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Drake Interplanetary","ship":"Kraken Privateer","price":2000.0,"shipClass":"Merchant","classWeight":"Large (Capital)","maxCrew":10,"hangarReq":"Capital","carrierCapable":"Y","onboardHangar":"Small","status":"Concept","cargo":3792,"carriedSnubs":[],"armament":["4\u00d7 S5 Remote Turrets (2\u00d7 S5 guns each)","2\u00d7 S3 Remote Turrets (2\u00d7 S2 guns each)"],"defenses":["4\u00d7 S5 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Drake Interplanetary","ship":"Mule","price":45.0,"shipClass":"Light Transport (Ground)","classWeight":"Ground","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":1,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"Drake Interplanetary","ship":"Vulture","price":175.0,"shipClass":"Salvage","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":12,"carriedSnubs":[],"armament":["2\u00d7 S2 Pilot Gun Hardpoints","1\u00d7 S2 Remote Turret"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Esperia","ship":"Blade","price":275.0,"shipClass":"Light Fighter","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Esperia","ship":"Glaive","price":350.0,"shipClass":"Medium Fighter","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Esperia","ship":"Prowler","price":440.0,"shipClass":"Dropship","classWeight":"Light","maxCrew":2,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S3 Pilot Gun Hardpoints","1\u00d7 S3 Manned Turret (2\u00d7 S3 guns)"],"defenses":["4\u00d7 S2 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Esperia","ship":"Prowler Utility","price":300.0,"shipClass":"Medium Freight","classWeight":"Medium","maxCrew":2,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S4 Pilot Gun Hardpoints","1\u00d7 S3 Manned Turret (2\u00d7 S3 guns)"],"defenses":["4\u00d7 S2 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Esperia","ship":"Talon","price":115.0,"shipClass":"Light Fighter","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S3 Missile Racks (4 missiles each)"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Esperia","ship":"Talon Shrike","price":115.0,"shipClass":"Light Fighter","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S3 Gun Hardpoints (pilot)","1\u00d7 S5 Missile Launcher (Striker cluster missiles)"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Esperia","ship":"Stinger","price":315.0,"shipClass":"Heavy Fighter","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S3 Gun Hardpoints (pilot)","2\u00d7 S4 Missile Racks (2 missiles each)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Gatac Manufacture","ship":"Railen","price":225.0,"shipClass":"Medium Freight","classWeight":"Large","maxCrew":4,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Concept","cargo":320,"carriedSnubs":[],"armament":["2\u00d7 S3 Pilot Gun Hardpoints","1\u00d7 S3 Remote Turret (2\u00d7 S2 guns)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Gatac Manufacture","ship":"Syulen","price":70.0,"shipClass":"Light Freight","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":6,"carriedSnubs":[],"armament":["2\u00d7 S2 Pilot Gun Hardpoints","2\u00d7 S2 Missile Racks"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Greycat Industrial","ship":"MTC","price":50.0,"shipClass":"Light Transport (Ground)","classWeight":"Ground","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"Greycat Industrial","ship":"PTV","price":15.0,"shipClass":"Light Transport (Ground)","classWeight":"Ground","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"Greycat Industrial","ship":"ROC","price":55.0,"shipClass":"Light Mining (Ground)","classWeight":"Ground","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":1,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"Greycat Industrial","ship":"ROC-DS","price":75.0,"shipClass":"Light Mining (Ground)","classWeight":"Ground","maxCrew":2,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":3,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"Greycat Industrial","ship":"STV","price":40.0,"shipClass":"Light Transport (Ground)","classWeight":"Ground","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"Grey's Market","ship":"Shiv","price":150.0,"shipClass":"Heavy Fighter","classWeight":"Medium","maxCrew":2,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":32,"carriedSnubs":[],"armament":["2\u00d7 S4 Pilot Gun Hardpoints","1\u00d7 Remote Turret (4\u00d7 S3 guns)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Kruger Intergalactic","ship":"L-21 Wolf","price":100.0,"shipClass":"Light Fighter","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S3 Pilot Gun Hardpoints","2\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Kruger Intergalactic","ship":"L-22 Wolf","price":110.0,"shipClass":"Light Fighter","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S3 Pilot Gun Hardpoints","2\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Kruger Intergalactic","ship":"P-52 Merlin","price":25.0,"shipClass":"Light","classWeight":"Snub","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S2 Gun Hardpoints (pilot)"],"defenses":[]},{"manufacturer":"Kruger Intergalactic","ship":"P-72 Archimedes","price":35.0,"shipClass":"Racing","classWeight":"Snub","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S2 Gun Hardpoints (pilot)"],"defenses":[]},{"manufacturer":"Kruger Intergalactic","ship":"P-72 Archimedes Emerald","price":40.0,"shipClass":"Racing","classWeight":"Snub","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S2 Gun Hardpoints (pilot)"],"defenses":[]},{"manufacturer":"Mirai","ship":"Guardian","price":250.0,"shipClass":"Heavy Fighter","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S3 Pilot Gun Hardpoints","2\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Mirai","ship":"Guardian MX","price":290.0,"shipClass":"Heavy Fighter","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S3 Pilot Gun Hardpoints","4\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Mirai","ship":"Guardian QI","price":260.0,"shipClass":"Interdiction","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S3 Pilot Gun Hardpoints","1\u00d7 EMP Generator","2\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Mirai","ship":"Fury","price":55.0,"shipClass":"Light Fighter (Snub)","classWeight":"Snub","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S2 Pilot Gun Hardpoints","2\u00d7 S2 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S1 Shield Generator"]},{"manufacturer":"Mirai","ship":"Fury LX","price":60.0,"shipClass":"Racing","classWeight":"Snub","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S2 Pilot Gun Hardpoints","4\u00d7 S2 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S1 Shield Generator"]},{"manufacturer":"Mirai","ship":"Fury MX","price":65.0,"shipClass":"Light Fighter (Snub)","classWeight":"Snub","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S3 Pilot Gun Hardpoints","2\u00d7 S2 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S1 Shield Generator"]},{"manufacturer":"Mirai","ship":"Razor","price":145.0,"shipClass":"Racing","classWeight":"Extra Light*","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S2 Pilot Gun Hardpoints"],"defenses":["1\u00d7 S1 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Mirai","ship":"Razor EX","price":155.0,"shipClass":"Racing","classWeight":"Extra Light*","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S2 Pilot Gun Hardpoints"],"defenses":["1\u00d7 S1 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Mirai","ship":"Razor LX","price":150.0,"shipClass":"Racing","classWeight":"Extra Light*","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S2 Pilot Gun Hardpoints"],"defenses":["1\u00d7 S1 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Musashi Industrial & Starflight Concern","ship":"Endeavor","price":350.0,"shipClass":"Heavy Science","classWeight":"Large (Capital)","maxCrew":5,"hangarReq":"Capital","carrierCapable":"Y","onboardHangar":"Small","status":"Concept","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S3 Remote Turrets (2\u00d7 S2 guns each)"],"defenses":["2\u00d7 S4 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Musashi Industrial & Starflight Concern","ship":"Expanse","price":135.0,"shipClass":"Industrial","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Concept","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S2 Remote Turrets"],"defenses":["1\u00d7 S2 Shield Generator"]},{"manufacturer":"Musashi Industrial & Starflight Concern","ship":"Freelancer","price":110.0,"shipClass":"Medium Freight","classWeight":"Medium","maxCrew":4,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":66,"carriedSnubs":[],"armament":["2\u00d7 S4 Pilot Gun Hardpoints","1\u00d7 S3 Manned Turret (2\u00d7 S2 guns)","4\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["2\u00d7 S2 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Musashi Industrial & Starflight Concern","ship":"Freelancer DUR","price":135.0,"shipClass":"Light Expedition","classWeight":"Light","maxCrew":4,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":28,"carriedSnubs":[],"armament":["2\u00d7 S4 Pilot Gun Hardpoints","1\u00d7 S3 Manned Turret (2\u00d7 S2 guns)","4\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["2\u00d7 S2 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Musashi Industrial & Starflight Concern","ship":"Freelancer MAX","price":150.0,"shipClass":"Medium Freight","classWeight":"Medium","maxCrew":4,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":120,"carriedSnubs":[],"armament":["2\u00d7 S4 Pilot Gun Hardpoints","1\u00d7 S3 Manned Turret (2\u00d7 S2 guns)","4\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["2\u00d7 S2 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Musashi Industrial & Starflight Concern","ship":"Freelancer MIS","price":175.0,"shipClass":"Medium Gunship","classWeight":"Medium","maxCrew":4,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":28,"carriedSnubs":[],"armament":["2\u00d7 S4 Pilot Gun Hardpoints","1\u00d7 S3 Manned Turret (2\u00d7 S2 guns)","16\u00d7 S3 Missile Racks (8\u00d7 S3 missiles each side)"],"defenses":["2\u00d7 S2 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Musashi Industrial & Starflight Concern","ship":"Hull-A","price":90.0,"shipClass":"Medium Freight","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":64,"carriedSnubs":[],"armament":["2\u00d7 S1 Pilot Gun Hardpoints"],"defenses":["1\u00d7 S1 Shield Generator"]},{"manufacturer":"Musashi Industrial & Starflight Concern","ship":"Hull-B","price":280.0,"shipClass":"Medium Freight","classWeight":"Medium","maxCrew":2,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":512,"carriedSnubs":[],"armament":["2\u00d7 S3 Pilot Gun Hardpoints","2\u00d7 S3 Missile Racks (4 missiles each)","1\u00d7 S3 Manned Turret (2\u00d7 S3 guns)"],"defenses":["1\u00d7 S3 Shield Generator"]},{"manufacturer":"Musashi Industrial & Starflight Concern","ship":"Hull-C","price":500.0,"shipClass":"Heavy Freight","classWeight":"Large*","maxCrew":4,"hangarReq":"Large","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":4608,"carriedSnubs":[],"armament":["2\u00d7 S3 Remote Turrets"],"defenses":["2\u00d7 S3 Shield Generators"]},{"manufacturer":"Musashi Industrial & Starflight Concern","ship":"Hull-D","price":550.0,"shipClass":"Heavy Freight","classWeight":"Large (Sub-Capital)","maxCrew":5,"hangarReq":"Extra Large","carrierCapable":"N","onboardHangar":"","status":"Concept","cargo":20480,"carriedSnubs":[],"armament":["2\u00d7 S4 Remote Turrets"],"defenses":["2\u00d7 S4 Shield Generators"]},{"manufacturer":"Musashi Industrial & Starflight Concern","ship":"Hull-E","price":750.0,"shipClass":"Heavy Freight","classWeight":"Large (Capital)","maxCrew":5,"hangarReq":"Capital","carrierCapable":"N","onboardHangar":"","status":"Concept","cargo":98304,"carriedSnubs":[],"armament":["4\u00d7 S5 Remote Turrets"],"defenses":["4\u00d7 S5 Shield Generators"]},{"manufacturer":"Musashi Industrial & Starflight Concern","ship":"Odyssey","price":700.0,"shipClass":"Expedition","classWeight":"Large (Sub-Capital)","maxCrew":6,"hangarReq":"Extra Large","carrierCapable":"Y","onboardHangar":"Extra Small","status":"Concept","cargo":252,"carriedSnubs":[],"armament":["4\u00d7 S4 Remote Turrets (2\u00d7 S3 guns each)"],"defenses":["4\u00d7 S4 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Musashi Industrial & Starflight Concern","ship":"Prospector","price":155.0,"shipClass":"Mining","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":32,"carriedSnubs":[],"armament":[],"defenses":["1\u00d7 S1 Shield Generator"]},{"manufacturer":"Musashi Industrial & Starflight Concern","ship":"Reliant Kore","price":65.0,"shipClass":"Light Freight","classWeight":"Light","maxCrew":2,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":6,"carriedSnubs":[],"armament":["2\u00d7 S2 Pilot Gun Hardpoints","1\u00d7 S2 Remote Turret (2\u00d7 S1 guns)"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Musashi Industrial & Starflight Concern","ship":"Reliant Mako","price":95.0,"shipClass":"Courier","classWeight":"Light","maxCrew":2,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S2 Pilot Gun Hardpoints","1\u00d7 S2 Remote Turret (2\u00d7 S1 guns)"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Musashi Industrial & Starflight Concern","ship":"Reliant Sen","price":85.0,"shipClass":"Light Science","classWeight":"Light","maxCrew":2,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S2 Pilot Gun Hardpoints","1\u00d7 S2 Remote Turret (2\u00d7 S1 guns)"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Musashi Industrial & Starflight Concern","ship":"Reliant Tana","price":75.0,"shipClass":"Light Gunship","classWeight":"Light","maxCrew":2,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S2 Pilot Gun Hardpoints","1\u00d7 S2 Remote Turret (2\u00d7 S2 guns)","2\u00d7 S2 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Musashi Industrial & Starflight Concern","ship":"Starfarer","price":300.0,"shipClass":"Refueling","classWeight":"Large*","maxCrew":8,"hangarReq":"Large","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":291,"carriedSnubs":[],"armament":["2\u00d7 S4 Remote Turrets (2\u00d7 S2 guns each)","2\u00d7 S2 Remote Turrets"],"defenses":["2\u00d7 S4 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Musashi Industrial & Starflight Concern","ship":"Starfarer Gemini","price":340.0,"shipClass":"Refueling","classWeight":"Large*","maxCrew":6,"hangarReq":"Large","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":248,"carriedSnubs":[],"armament":["2\u00d7 S4 Remote Turrets (2\u00d7 S3 guns each)","2\u00d7 S3 Remote Turrets (2\u00d7 S2 guns each)"],"defenses":["2\u00d7 S4 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Musashi Industrial & Starflight Concern","ship":"Starlancer MAX","price":250.0,"shipClass":"Heavy Freight","classWeight":"Large (Sub-Capital)","maxCrew":4,"hangarReq":"Extra Large","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":224,"carriedSnubs":[],"armament":["2\u00d7 S4 Remote Turrets (2\u00d7 S3 guns each)"],"defenses":["2\u00d7 S4 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Musashi Industrial & Starflight Concern","ship":"Starlancer TAC","price":375.0,"shipClass":"Heavy Transport","classWeight":"Large (Sub-Capital)","maxCrew":8,"hangarReq":"Extra Large","carrierCapable":"N","onboardHangar":"Bespoke","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S4 Pilot Gun Hardpoints","2\u00d7 S4 Manned Turrets (2\u00d7 S4 guns each)","2\u00d7 S4 Remote Turrets (2\u00d7 S3 guns each)","4\u00d7 S4 Missile Racks (2 missiles each)"],"defenses":["4\u00d7 S4 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Origin Jumpworks","ship":"100i","price":50.0,"shipClass":"Light Touring","classWeight":"Extra Light*","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":2,"carriedSnubs":[],"armament":["2\u00d7 S2 Pilot Gun Hardpoints"],"defenses":["1\u00d7 S1 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Origin Jumpworks","ship":"125a","price":60.0,"shipClass":"Light Fighter","classWeight":"Extra Light*","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":2,"carriedSnubs":[],"armament":["2\u00d7 S2 Pilot Gun Hardpoints","2\u00d7 S2 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S1 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Origin Jumpworks","ship":"135c","price":65.0,"shipClass":"Light Transport","classWeight":"Extra Light*","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":6,"carriedSnubs":[],"armament":["2\u00d7 S2 Pilot Gun Hardpoints"],"defenses":["1\u00d7 S1 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Origin Jumpworks","ship":"300i","price":55.0,"shipClass":"Touring","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":8,"carriedSnubs":[],"armament":["2\u00d7 S3 Pilot Gun Hardpoints"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Origin Jumpworks","ship":"315p","price":65.0,"shipClass":"Recon/Pathfinding","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":12,"carriedSnubs":[],"armament":["2\u00d7 S3 Pilot Gun Hardpoints"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Origin Jumpworks","ship":"325a","price":70.0,"shipClass":"Light Fighter","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":4,"carriedSnubs":[],"armament":["2\u00d7 S3 Pilot Gun Hardpoints","2\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Origin Jumpworks","ship":"350r","price":125.0,"shipClass":"Racing","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S3 Pilot Gun Hardpoints"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Origin Jumpworks","ship":"400i","price":250.0,"shipClass":"Medium Expedition","classWeight":"Large","maxCrew":3,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":42,"carriedSnubs":[],"armament":["2\u00d7 S4 Pilot Gun Hardpoints","2\u00d7 S2 Remote Turrets"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Origin Jumpworks","ship":"600i (Exploration)","price":675.0,"shipClass":"Expedition","classWeight":"Large*","maxCrew":5,"hangarReq":"Large","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":16,"carriedSnubs":["G12"],"armament":["4\u00d7 S4 Pilot Gun Hardpoints","2\u00d7 S3 Remote Turrets (2\u00d7 S2 guns each)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Origin Jumpworks","ship":"600i (Touring)","price":635.0,"shipClass":"Touring","classWeight":"Large*","maxCrew":5,"hangarReq":"Large","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":16,"carriedSnubs":[],"armament":["4\u00d7 S4 Pilot Gun Hardpoints","2\u00d7 S3 Remote Turrets (2\u00d7 S2 guns each)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Origin Jumpworks","ship":"85x","price":50.0,"shipClass":"Touring","classWeight":"Snub","maxCrew":2,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S1 Pilot Gun Hardpoints"],"defenses":[]},{"manufacturer":"Origin Jumpworks","ship":"890j","price":950.0,"shipClass":"Touring","classWeight":"Large (Sub-Capital)","maxCrew":8,"hangarReq":"Extra Large","carrierCapable":"Y","onboardHangar":"Tiny","status":"Flight Ready","cargo":484,"carriedSnubs":["85x"],"armament":["2\u00d7 S4 Remote Turrets (2\u00d7 S3 guns each)","2\u00d7 S3 Remote Turrets (2\u00d7 S2 guns each)"],"defenses":["2\u00d7 S4 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Origin Jumpworks","ship":"G12","price":60.0,"shipClass":"Light Transport","classWeight":"Ground","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Concept","cargo":0,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"Origin Jumpworks","ship":"G12a","price":65.0,"shipClass":"Armor (Ground)","classWeight":"Ground","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Concept","cargo":0,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"Origin Jumpworks","ship":"G12r","price":60.0,"shipClass":"Racing (Ground)","classWeight":"Ground","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Concept","cargo":0,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"Origin Jumpworks","ship":"M50","price":100.0,"shipClass":"Racing","classWeight":"Ground","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S2 Pilot Gun Hardpoints"],"defenses":["1\u00d7 S1 Shield Generator"]},{"manufacturer":"Origin Jumpworks","ship":"X1","price":40.0,"shipClass":"Racing","classWeight":"Ground","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"Origin Jumpworks","ship":"X1 Force","price":50.0,"shipClass":"Racing","classWeight":"Ground","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["1\u00d7 S2 Pilot Gun Hardpoint"],"defenses":[]},{"manufacturer":"Origin Jumpworks","ship":"X1 Velocity","price":45.0,"shipClass":"Racing","classWeight":"Ground","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"Roberts Space Industries","ship":"Apollo Medivac","price":290.0,"shipClass":"Medical","classWeight":"Large","maxCrew":2,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S3 Pilot Gun Hardpoints","1\u00d7 S3 Remote Turret (2\u00d7 S2 guns)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Roberts Space Industries","ship":"Apollo Triage","price":260.0,"shipClass":"Medical","classWeight":"Large","maxCrew":2,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S3 Pilot Gun Hardpoints","1\u00d7 S3 Remote Turret (2\u00d7 S2 guns)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Roberts Space Industries","ship":"Arrastra","price":575.0,"shipClass":"Mining","classWeight":"Large*","maxCrew":5,"hangarReq":"Large","carrierCapable":"N","onboardHangar":"","status":"Concept","cargo":576,"carriedSnubs":[],"armament":["4\u00d7 S3 Remote Turrets (2\u00d7 S2 guns each)"],"defenses":["2\u00d7 S4 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Roberts Space Industries","ship":"Aurora CL","price":45.0,"shipClass":"Light Freight","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":6,"carriedSnubs":[],"armament":["2\u00d7 S2 Pilot Gun Hardpoints"],"defenses":["1\u00d7 S1 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Roberts Space Industries","ship":"Aurora ES","price":20.0,"shipClass":"Recon/Pathfinding","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":3,"carriedSnubs":[],"armament":["2\u00d7 S2 Pilot Gun Hardpoints"],"defenses":["1\u00d7 S1 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Roberts Space Industries","ship":"Aurora LN","price":40.0,"shipClass":"Light Fighter","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":3,"carriedSnubs":[],"armament":["2\u00d7 S2 Pilot Gun Hardpoints","2\u00d7 S2 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S1 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Roberts Space Industries","ship":"Aurora LX","price":35.0,"shipClass":"Recon/Pathfinding","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":3,"carriedSnubs":[],"armament":["2\u00d7 S2 Pilot Gun Hardpoints"],"defenses":["1\u00d7 S1 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Roberts Space Industries","ship":"Aurora MR","price":30.0,"shipClass":"Light Fighter","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":3,"carriedSnubs":[],"armament":["2\u00d7 S2 Pilot Gun Hardpoints","2\u00d7 S2 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S1 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Roberts Space Industries","ship":"Aurora SE","price":60.0,"shipClass":"Light Freight","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":3,"carriedSnubs":[],"armament":["2\u00d7 S2 Pilot Gun Hardpoints"],"defenses":["1\u00d7 S1 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Roberts Space Industries","ship":"Aurora Mk II","price":45.0,"shipClass":"Light Fighter","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":3,"carriedSnubs":[],"armament":["2\u00d7 S2 Pilot Gun Hardpoints","2\u00d7 S2 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S1 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Roberts Space Industries","ship":"Constellation Andromeda","price":240.0,"shipClass":"Medium Gunship","classWeight":"Large","maxCrew":4,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"Bespoke","status":"Flight Ready","cargo":96,"carriedSnubs":["P-52 Merlin"],"armament":["4\u00d7 S4 Pilot Gun Hardpoints","1\u00d7 S4 Manned Turret (2\u00d7 S4 guns)","1\u00d7 S2 Remote Turret (2\u00d7 S2 guns)","4\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["2\u00d7 S3 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Roberts Space Industries","ship":"Constellation Aquila","price":310.0,"shipClass":"Medium Expedition","classWeight":"Large","maxCrew":4,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"Bespoke","status":"Flight Ready","cargo":96,"carriedSnubs":["P-52 Merlin","Lynx Rover"],"armament":["4\u00d7 S4 Pilot Gun Hardpoints","1\u00d7 S4 Manned Turret (2\u00d7 S4 guns)","1\u00d7 S2 Remote Turret (2\u00d7 S2 guns)","4\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["2\u00d7 S3 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Roberts Space Industries","ship":"Constellation Phoenix","price":350.0,"shipClass":"Touring","classWeight":"Large","maxCrew":4,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"Bespoke","status":"Flight Ready","cargo":80,"carriedSnubs":["P-72 Archimedes"],"armament":["4\u00d7 S4 Pilot Gun Hardpoints","1\u00d7 S4 Manned Turret (2\u00d7 S4 guns)","1\u00d7 S2 Remote Turret (2\u00d7 S2 guns)"],"defenses":["2\u00d7 S3 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Roberts Space Industries","ship":"Constellation Phoenix Emerald","price":350.0,"shipClass":"Touring","classWeight":"Large","maxCrew":4,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"Bespoke","status":"Flight Ready","cargo":80,"carriedSnubs":["P-72 Archimedes"],"armament":["4\u00d7 S4 Pilot Gun Hardpoints","1\u00d7 S4 Manned Turret (2\u00d7 S4 guns)","1\u00d7 S2 Remote Turret (2\u00d7 S2 guns)"],"defenses":["2\u00d7 S3 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Roberts Space Industries","ship":"Constellation Taurus","price":200.0,"shipClass":"Medium Freight","classWeight":"Large","maxCrew":4,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":174,"carriedSnubs":[],"armament":["4\u00d7 S4 Pilot Gun Hardpoints","1\u00d7 S4 Manned Turret (2\u00d7 S4 guns)","1\u00d7 S2 Remote Turret (2\u00d7 S2 guns)","4\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["2\u00d7 S3 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Roberts Space Industries","ship":"Galaxy","price":380.0,"shipClass":"Medium Industrial","classWeight":"Large*","maxCrew":6,"hangarReq":"Large","carrierCapable":"N","onboardHangar":"","status":"Concept","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S3 Remote Turrets (2\u00d7 S2 guns each)"],"defenses":["2\u00d7 S4 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Roberts Space Industries","ship":"Lynx","price":60.0,"shipClass":"Light Touring (Ground)","classWeight":"Ground","maxCrew":2,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"Roberts Space Industries","ship":"Mantis","price":155.0,"shipClass":"Interdiction","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S3 Pilot Gun Hardpoints","1\u00d7 Quantum Enforcement Device (QED)"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Roberts Space Industries","ship":"Meteor","price":260.0,"shipClass":"Medium Fighter","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S3 Pilot Gun Hardpoints","2\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Roberts Space Industries","ship":"Orion","price":650.0,"shipClass":"Heavy Mining","classWeight":"Large (Capital)","maxCrew":7,"hangarReq":"Capital","carrierCapable":"N","onboardHangar":"","status":"Concept","cargo":384,"carriedSnubs":[],"armament":["2\u00d7 S3 Remote Turrets (2\u00d7 S2 guns each)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Roberts Space Industries","ship":"Perseus","price":675.0,"shipClass":"Light Frigate","classWeight":"Large (Sub-Capital)","maxCrew":7,"hangarReq":"Extra Large","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":50,"carriedSnubs":[],"armament":["4\u00d7 S5 Pilot Gun Hardpoints","2\u00d7 Manned Turrets (2\u00d7 S4 guns each)","2\u00d7 S4 Torpedo Tubes (2 torpedoes each)"],"defenses":["4\u00d7 S4 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Roberts Space Industries","ship":"Polaris","price":975.0,"shipClass":"Corvette","classWeight":"Large (Sub-Capital)","maxCrew":12,"hangarReq":"Extra Large","carrierCapable":"Y","onboardHangar":"Extra Small","status":"Flight Ready","cargo":576,"carriedSnubs":[],"armament":["1\u00d7 S7 Pilot Torpedo Tube","5\u00d7 S4 Manned/Remote Turrets (2\u00d7 S4 guns each)","2\u00d7 S4 Torpedo Tubes (4\u00d7 S10 torpedoes each)"],"defenses":["4\u00d7 S4 Shield Generators","4\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Roberts Space Industries","ship":"Salvation","price":60.0,"shipClass":"Light Salvage","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"Extra Small","status":"Flight Ready","cargo":6,"carriedSnubs":[],"armament":["2\u00d7 S2 Pilot Gun Hardpoints"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Roberts Space Industries","ship":"Scorpius","price":240.0,"shipClass":"Heavy Fighter","classWeight":"Light","maxCrew":2,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S4 Pilot Gun Hardpoints","1\u00d7 S4 Manned Turret (2\u00d7 S3 guns)","4\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Roberts Space Industries","ship":"Scorpius Antares","price":230.0,"shipClass":"Heavy Interdiction","classWeight":"Light","maxCrew":2,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S4 Pilot Gun Hardpoints","1\u00d7 EMP Generator","4\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Roberts Space Industries","ship":"Ursa Rover","price":50.0,"shipClass":"Light Transport (Ground)","classWeight":"Ground","maxCrew":2,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"Roberts Space Industries","ship":"Ursa Rover Medical","price":60.0,"shipClass":"Light Transport (Ground)","classWeight":"Ground","maxCrew":2,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"Roberts Space Industries","ship":"Ursa Rover Fortuna","price":55.0,"shipClass":"Light Transport (Ground)","classWeight":"Ground","maxCrew":2,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"Roberts Space Industries","ship":"Zeus CL","price":175.0,"shipClass":"Medium Freight","classWeight":"Medium","maxCrew":3,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":128,"carriedSnubs":[],"armament":["2\u00d7 S3 Pilot Gun Hardpoints","1\u00d7 S3 Remote Turret (2\u00d7 S2 guns)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Roberts Space Industries","ship":"Zeus ES","price":175.0,"shipClass":"Light Expedition","classWeight":"Medium","maxCrew":3,"hangarReq":"Medium","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":32,"carriedSnubs":[],"armament":["2\u00d7 S3 Pilot Gun Hardpoints","1\u00d7 S3 Remote Turret (2\u00d7 S2 guns)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Tumbril","ship":"Cyclone","price":55.0,"shipClass":"Light Transport (Ground)","classWeight":"Ground","maxCrew":2,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":1,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"Tumbril","ship":"Cyclone AA","price":80.0,"shipClass":"Support (Ground)","classWeight":"Ground","maxCrew":2,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["1\u00d7 S2 Anti-Aircraft Missile Battery"],"defenses":[]},{"manufacturer":"Tumbril","ship":"Cyclone MT","price":75.0,"shipClass":"Armor (Ground)","classWeight":"Ground","maxCrew":3,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["1\u00d7 S3 Turret (2\u00d7 S2 guns)"],"defenses":[]},{"manufacturer":"Tumbril","ship":"Cyclone RC","price":65.0,"shipClass":"Racing (Ground)","classWeight":"Ground","maxCrew":2,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"Tumbril","ship":"Cyclone RN","price":65.0,"shipClass":"Recon (Ground)","classWeight":"Ground","maxCrew":2,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"Tumbril","ship":"Cyclone TR","price":65.0,"shipClass":"Recon (Ground)","classWeight":"Ground","maxCrew":3,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["1\u00d7 S2 Turret"],"defenses":[]},{"manufacturer":"Tumbril","ship":"Nova","price":120.0,"shipClass":"Armor (Ground)","classWeight":"Ground*","maxCrew":1,"hangarReq":"Extra Small (Ground)","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["1\u00d7 S4 Main Cannon","1\u00d7 S2 Coaxial Gun"],"defenses":[]},{"manufacturer":"Tumbril","ship":"Ranger CV","price":35.0,"shipClass":"Light Freight","classWeight":"Ground","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Concept","cargo":0,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"Tumbril","ship":"Ranger RC","price":35.0,"shipClass":"Racing (Ground)","classWeight":"Ground","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Concept","cargo":0,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"Tumbril","ship":"Ranger TR","price":40.0,"shipClass":"Recon (Ground)","classWeight":"Ground","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Concept","cargo":0,"carriedSnubs":[],"armament":["1\u00d7 S1 Gun Hardpoint"],"defenses":[]},{"manufacturer":"Tumbril","ship":"Storm","price":100.0,"shipClass":"Armor (Ground)","classWeight":"Ground*","maxCrew":1,"hangarReq":"Extra Small (Ground)","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["1\u00d7 S4 Main Cannon","1\u00d7 S3 Coaxial Gun"],"defenses":[]},{"manufacturer":"Tumbril","ship":"Storm AA","price":100.0,"shipClass":"Armor (Ground)","classWeight":"Ground*","maxCrew":1,"hangarReq":"Extra Small (Ground)","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["1\u00d7 S4 Anti-Aircraft Battery (missile system)"],"defenses":[]},{"manufacturer":"Vanduul","ship":"Scythe","price":300.0,"shipClass":"Medium Fighter","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["3\u00d7 S4 Pilot Gun Hardpoints","2\u00d7 S3 Missile Racks (2 missiles each)"],"defenses":["1\u00d7 S3 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"ARGO Astronautics","ship":"ATLS","price":35.0,"shipClass":"Industrial","classWeight":"Ground*","maxCrew":1,"hangarReq":"Extra Small (Ground)","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["1\u00d7 Tractor Beam"],"defenses":[]},{"manufacturer":"ARGO Astronautics","ship":"ATLS GEO","price":40.0,"shipClass":"Industrial","classWeight":"Ground*","maxCrew":1,"hangarReq":"Extra Small (Ground)","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["1\u00d7 Mining Laser"],"defenses":[]},{"manufacturer":"ARGO Astronautics","ship":"MOTH","price":315.0,"shipClass":"Medium Salvage","classWeight":"Light","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":224,"carriedSnubs":[],"armament":[],"defenses":["1\u00d7 S2 Shield Generator"]},{"manufacturer":"Drake Interplanetary","ship":"Golem","price":60.0,"shipClass":"Mining","classWeight":"Ground","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":32,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"Drake Interplanetary","ship":"Golem OX","price":85.0,"shipClass":"Light Freight","classWeight":"Ground","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"Roberts Space Industries","ship":"Hermes","price":220.0,"shipClass":"Courier","classWeight":"Extra Light","maxCrew":1,"hangarReq":"Extra Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["2\u00d7 S3 Pilot Gun Hardpoints"],"defenses":["1\u00d7 S2 Shield Generator","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Greycat Industrial","ship":"MDC","price":50.0,"shipClass":"Light Transport (Ground)","classWeight":"Ground","maxCrew":1,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":[],"defenses":[]},{"manufacturer":"Drake Interplanetary","ship":"Dragonfly Star Kitten Edition","price":45.0,"shipClass":"Racing (Ground)","classWeight":"Ground","maxCrew":2,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["1\u00d7 S1 Gun Hardpoint"],"defenses":[]},{"manufacturer":"Anvil Aerospace","ship":"F8C Lightning Executive Edition","price":0.0,"shipClass":"Heavy Fighter","classWeight":"Light","maxCrew":1,"hangarReq":"Small","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":0,"carriedSnubs":[],"armament":["4\u00d7 S5 Gun Hardpoints (pilot)","2\u00d7 S4 Missile Racks (2 missiles each)"],"defenses":["2\u00d7 S3 Shield Generators","2\u00d7 S1 Countermeasure Launchers"]},{"manufacturer":"Greycat Industrial","ship":"UTV","price":40.0,"shipClass":"Light Transport (Ground)","classWeight":"Ground","maxCrew":2,"hangarReq":"Tiny","carrierCapable":"N","onboardHangar":"","status":"Flight Ready","cargo":1,"carriedSnubs":[],"armament":[],"defenses":[]}];
+
+// ═══════════════════════════════════════════════════════
+//  SEARCH
+// ═══════════════════════════════════════════════════════
+let searchQuery = '';
+
+function handleSearch(val) {
+  searchQuery = val.trim().toLowerCase();
+  // Re-render whichever view is active (except database which has its own filter)
+  if (currentView === 'acquisition') renderAcquisition();
+  else if (currentView === 'shipyard') renderShipyard();
+  else if (currentView === 'database') renderDatabase();
+}
+
+function filterFleet(ships) {
+  if (!searchQuery) return ships;
+  return ships.filter(({ship, uid}) => {
+    const name = getDisplayName(ship).toLowerCase();
+    const mfr = (ship.manufacturer_name || '').toLowerCase();
+    const pledge = (ship.pledge_name || '').toLowerCase();
+    return name.includes(searchQuery) || mfr.includes(searchQuery) || pledge.includes(searchQuery);
+  });
+}
+
+function filterDB(ships) {
+  if (!searchQuery) return ships;
+  return ships.filter(s => {
+    const name = (s.ship || '').toLowerCase();
+    const mfr = (s.manufacturer || '').toLowerCase();
+    const cls = (s.shipClass || '').toLowerCase();
+    return name.includes(searchQuery) || mfr.includes(searchQuery) || cls.includes(searchQuery);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  CLEAR FLEET
+// ═══════════════════════════════════════════════════════
+function confirmClearFleet() {
+  if (!confirm('⚠ CAUTION: This will clear your entire fleet manifest, all Ship\'s Log entries, and wing assignments. This cannot be undone.\n\nProceed?')) return;
+  fleet = [];
+  loreData = {};
+  wings = [];
+  assignments = {};
+  localStorage.removeItem(STORE_KEYS.fleet);
+  save();
+  initEntry();
+  renderAll();
+  closeDetail();
+  showToast('Fleet manifest cleared');
+}
+
+// ═══════════════════════════════════════════════════════
+//  RENDER: DATABASE VIEW
+// ═══════════════════════════════════════════════════════
+function renderDatabase() {
+  const panel = document.getElementById('database-content');
+  panel.innerHTML = '';
+
+  // Filter bar
+  const allMfrs = [...new Set(BEACON_DB.map(s => s.manufacturer))].sort();
+  const filterBar = document.createElement('div');
+  filterBar.className = 'db-filter-bar';
+
+  const statusFilters = [
+    { key: 'all',     label: 'ALL VESSELS' },
+    { key: 'ready',   label: 'FLIGHT READY' },
+    { key: 'concept', label: 'IN DEVELOPMENT' },
+  ];
+  statusFilters.forEach(f => {
+    const btn = document.createElement('button');
+    btn.className = 'db-filter-btn' + (dbFilter === f.key ? ' active' : '');
+    btn.textContent = f.label;
+    btn.onclick = () => { dbFilter = f.key; dbMfrFilter = ''; panel.dataset.page = '0'; renderDatabase(); };
+    filterBar.appendChild(btn);
+  });
+
+  // Separator
+  const sep = document.createElement('div'); sep.className = 'db-filter-sep';
+  filterBar.appendChild(sep);
+
+  // Manufacturer dropdown
+  const sel = document.createElement('select');
+  sel.className = 'db-mfr-select';
+  sel.innerHTML = '<option value="">ALL SHIPYARDS</option>' +
+    allMfrs.map(m => `<option value="${m}"${dbMfrFilter===m?' selected':''}>${m}</option>`).join('');
+  sel.onchange = () => { dbMfrFilter = sel.value; dbFilter = 'all'; panel.dataset.page = '0'; renderDatabase(); };
+  filterBar.appendChild(sel);
+
+  panel.appendChild(filterBar);
+
+  // Apply filters
+  let base = BEACON_DB;
+  if (dbFilter === 'ready')   base = base.filter(s => s.status === 'Flight Ready');
+  if (dbFilter === 'concept') base = base.filter(s => s.status === 'Concept');
+  if (dbMfrFilter)            base = base.filter(s => s.manufacturer === dbMfrFilter);
+  const filtered = filterDB(base);
+  const groups = {};
+  filtered.forEach(s => {
+    if (!groups[s.manufacturer]) groups[s.manufacturer] = [];
+    groups[s.manufacturer].push(s);
+  });
+
+  // Stats bar
+  const statsBar = document.createElement('div');
+  statsBar.style.cssText = 'display:flex;gap:32px;margin-bottom:28px;padding:12px 16px;background:var(--bg-panel);border:1px solid var(--border-dim);';
+  const flightReady = filtered.filter(s => s.status === 'Flight Ready').length;
+  const concept = filtered.filter(s => s.status === 'Concept').length;
+  statsBar.innerHTML = `
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-secondary);">
+      <span style="color:var(--accent);font-size:20px;">${filtered.length}</span><br>VESSELS IN DATABASE
+    </div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-secondary);">
+      <span style="color:var(--lti-color);font-size:20px;">${flightReady}</span><br>FLIGHT READY
+    </div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-secondary);">
+      <span style="color:var(--amber);font-size:20px;">${concept}</span><br>IN DEVELOPMENT
+    </div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-secondary);">
+      <span style="color:var(--text-primary);font-size:20px;">${Object.keys(groups).length}</span><br>MANUFACTURERS
+    </div>
+  `;
+  panel.appendChild(statsBar);
+
+  // Pagination — 48 per page
+  const PAGE_SIZE = 48;
+  let dbPage = parseInt(panel.dataset.page || '0');
+  const allShips = filtered;
+  const totalPages = Math.ceil(allShips.length / PAGE_SIZE);
+  dbPage = Math.min(dbPage, totalPages - 1);
+
+  const pageShips = allShips.slice(dbPage * PAGE_SIZE, (dbPage + 1) * PAGE_SIZE);
+
+  // Grid
+  const grid = document.createElement('div');
+  grid.className = 'ships-grid db-grid';
+  pageShips.forEach(s => grid.appendChild(buildDBCard(s)));
+  panel.appendChild(grid);
+
+  // Pagination controls
+  if (totalPages > 1) {
+    const pag = document.createElement('div');
+    pag.style.cssText = 'display:flex;justify-content:center;align-items:center;gap:8px;margin-top:24px;padding-bottom:40px;';
+    const mkBtn = (label, page, disabled) => {
+      const b = document.createElement('button');
+      b.className = 'sq-btn';
+      b.textContent = label;
+      b.disabled = disabled;
+      if (disabled) b.style.opacity = '0.3';
+      b.onclick = () => { panel.dataset.page = page; renderDatabase(); };
+      return b;
+    };
+    pag.appendChild(mkBtn('◀◀', 0, dbPage === 0));
+    pag.appendChild(mkBtn('◀', dbPage - 1, dbPage === 0));
+    const info = document.createElement('span');
+    info.style.cssText = 'font-family:var(--font-mono);font-size:10px;color:var(--text-secondary);padding:0 8px;';
+    info.textContent = `${dbPage+1} / ${totalPages}`;
+    pag.appendChild(info);
+    pag.appendChild(mkBtn('▶', dbPage + 1, dbPage >= totalPages-1));
+    pag.appendChild(mkBtn('▶▶', totalPages-1, dbPage >= totalPages-1));
+    panel.appendChild(pag);
+  }
+}
+
+function buildDBCard(s) {
+  const card = document.createElement('div');
+  card.className = 'ship-card db-card';
+  card.style.cursor = 'pointer';
+
+  // Try to find a local image from ships/ dir or fallback
+  const img = document.createElement('img');
+  img.className = 'ship-card-img';
+  img.src = `ships/${s.ship.replace(/[^a-zA-Z0-9]/g,'_')}.jpg`;
+  img.onerror = function() {
+    this.src = `ships/${s.manufacturer.split(' ')[0]}_placeholder.jpg`;
+    this.onerror = () => { this.style.display='none'; };
+  };
+  img.loading = 'lazy';
+  card.appendChild(img);
+
+  // Overlay
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:absolute;inset:0;background:linear-gradient(to top,rgba(6,12,20,0.95) 0%,rgba(6,12,20,0.5) 50%,transparent 100%);z-index:1;';
+  card.appendChild(overlay);
+
+  // Status badge
+  const statusBadge = document.createElement('div');
+  statusBadge.className = 'ship-card-badges';
+  statusBadge.style.zIndex = '3';
+  const isReady = s.status === 'Flight Ready';
+  statusBadge.innerHTML = `<span class="badge" style="background:${isReady ? 'var(--lti-glow)' : 'var(--amber-glow)'};border-color:${isReady ? 'rgba(0,200,150,0.4)' : 'rgba(232,160,32,0.4)'};color:${isReady ? 'var(--lti-color)' : 'var(--amber)'};">${s.status === 'Flight Ready' ? 'READY' : 'CONCEPT'}</span>`;
+  card.appendChild(statusBadge);
+
+  const body = document.createElement('div');
+  body.className = 'ship-card-body';
+  body.style.zIndex = '2';
+  body.innerHTML = `
+    <div class="ship-card-mfr">${s.manufacturer}</div>
+    <div class="ship-card-name">${s.ship}</div>
+  `;
+  card.appendChild(body);
+
+  card.addEventListener('click', () => openDBModal(s));
+  return card;
+}
+
+// ── DB Detail Panel
+function openDBDetail(s) {
+  activeShipUID = null;
+  document.getElementById('detail-img').style.display = 'none';
+  document.getElementById('detail-mfr').textContent = s.manufacturer;
+  document.getElementById('detail-name').textContent = s.ship;
+
+  const link = document.getElementById('detail-rsi-link');
+  link.style.display = 'none';
+
+  const badges = document.getElementById('detail-badges');
+  const isReady = s.status === 'Flight Ready';
+  badges.innerHTML = `<span class="badge" style="background:${isReady ? 'var(--lti-glow)':'var(--amber-glow)'};border-color:${isReady ? 'rgba(0,200,150,0.4)':'rgba(232,160,32,0.4)'};color:${isReady ? 'var(--lti-color)':'var(--amber)'};">${s.status}</span>`;
+
+  document.getElementById('detail-pledge').textContent = s.shipClass;
+  document.getElementById('detail-date').textContent = s.classWeight;
+  document.getElementById('detail-cost').textContent = s.price ? `$${s.price.toFixed(0)} USD` : 'Earned / Restricted';
+  document.getElementById('detail-lti').textContent = `Crew: ${s.maxCrew} · Cargo: ${s.cargo} SCU`;
+
+  // Lore area — repurpose for armament/defense data
+  const loreInput = document.getElementById('lore-input');
+  loreInput.style.display = 'none';
+
+  // Show armament/defense in detail body
+  let existing = document.getElementById('db-detail-extra');
+  if (existing) existing.remove();
+  const extra = document.createElement('div');
+  extra.id = 'db-detail-extra';
+
+  const armStr = s.armament && s.armament.length ? s.armament.join('\n') : 'No armament data';
+  const defStr = s.defenses && s.defenses.length ? s.defenses.join('\n') : 'No defense data';
+  const snubStr = s.carriedSnubs && s.carriedSnubs.length ? s.carriedSnubs.join(', ') : '—';
+
+  extra.innerHTML = `
+    <div class="detail-divider"></div>
+    <div class="detail-meta-grid" style="grid-template-columns:1fr;">
+      <div class="detail-meta-item">
+        <div class="detail-meta-label">HANGAR REQUIREMENT</div>
+        <div class="detail-meta-value">${s.hangarReq}</div>
+      </div>
+      <div class="detail-meta-item" style="margin-top:8px;">
+        <div class="detail-meta-label">CARRIER CAPABLE</div>
+        <div class="detail-meta-value" style="color:${s.carrierCapable==='Y'?'var(--lti-color)':'var(--text-secondary)'}">${s.carrierCapable === 'Y' ? 'YES' : 'NO'}${s.onboardHangar ? ' — Hangar: '+s.onboardHangar : ''}</div>
+      </div>
+      ${s.carriedSnubs.length ? `<div class="detail-meta-item" style="margin-top:8px;"><div class="detail-meta-label">CARRIED SNUBS</div><div class="detail-meta-value">${snubStr}</div></div>` : ''}
+    </div>
+    <div class="detail-divider"></div>
+    <div class="detail-section-title">ARMAMENT</div>
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-secondary);line-height:1.8;white-space:pre-line;margin-bottom:16px;">${armStr}</div>
+    <div class="detail-section-title">DEFENSES</div>
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-secondary);line-height:1.8;white-space:pre-line;">${defStr}</div>
+  `;
+  document.getElementById('detail-panel').querySelector('.detail-body').appendChild(extra);
+
+  document.getElementById('lore-save-hint').style.display = 'none';
+  document.getElementById('squadron-assign-section').style.display = 'none';
+  document.getElementById('detail-panel').classList.add('open');
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  DB FILTER STATE
+// ═══════════════════════════════════════════════════════
+let dbFilter = 'all';       // 'all' | 'ready' | 'concept'
+let dbMfrFilter = '';       // manufacturer name or ''
+
+// ═══════════════════════════════════════════════════════
+//  GALLERY LIGHTBOX
+// ═══════════════════════════════════════════════════════
+function openGallery() {
+  const src = document.getElementById('modal-hero-img').src;
+  if (!src || src.endsWith('undefined')) return;
+  document.getElementById('gallery-img').src = src;
+  document.getElementById('gallery-lightbox').classList.add('open');
+}
+function closeGallery() {
+  document.getElementById('gallery-lightbox').classList.remove('open');
+}
+
+// ═══════════════════════════════════════════════════════
+//  SHIP DETAIL MODAL
+// ═══════════════════════════════════════════════════════
+function openShipModal() {
+  document.getElementById('ship-modal').classList.add('open');
+}
+function closeShipModal() {
+  document.getElementById('ship-modal').classList.remove('open');
+  document.getElementById('modal-dynamic').innerHTML = '';
+}
+
+// ── Open modal for a FLEET ship (has lore, wing, RSI link, pledge data)
+function openFleetModal(ship, uid) {
+  const rsi = getRSIData(ship);
+  const name = getDisplayName(ship);
+
+  // Hero
+  const heroImg = document.getElementById('modal-hero-img');
+  if (rsi && rsi.img) { heroImg.src = rsi.img; heroImg.style.display = ''; }
+  else { heroImg.style.display = 'none'; }
+  document.getElementById('modal-hero-mfr').textContent = ship.manufacturer_name;
+
+  const heroBadges = document.getElementById('modal-hero-badges');
+  heroBadges.innerHTML = '';
+  if (ship.lti) heroBadges.innerHTML += '<span class="badge badge-lti">LIFETIME INSURANCE</span>';
+  const lore = loreData[uid] || '';
+  if (lore) heroBadges.innerHTML += '<span class="badge badge-lore">LOG ENTRY</span>';
+
+  document.getElementById('modal-name').textContent = name;
+
+  const rsiLink = document.getElementById('modal-rsi-link');
+  if (rsi && rsi.rsiUrl) { rsiLink.href = rsi.rsiUrl; rsiLink.style.display = ''; }
+  else { rsiLink.style.display = 'none'; }
+
+  // Stats grid
+  const stats = document.getElementById('modal-stats');
+  const cost = ship.pledge_cost === '$0.00 USD' ? 'Earned / Referral' : ship.pledge_cost;
+  stats.innerHTML = `
+    <div class="ship-modal-stat">
+      <div class="ship-modal-stat-label">Manufacturer</div>
+      <div class="ship-modal-stat-value">${ship.manufacturer_name}</div>
+    </div>
+    <div class="ship-modal-stat">
+      <div class="ship-modal-stat-label">Acquired</div>
+      <div class="ship-modal-stat-value">${cleanPledgeName(ship.pledge_name)}</div>
+    </div>
+    <div class="ship-modal-stat">
+      <div class="ship-modal-stat-label">Date Registered</div>
+      <div class="ship-modal-stat-value">${ship.pledge_date}</div>
+    </div>
+    <div class="ship-modal-stat">
+      <div class="ship-modal-stat-label">Pledge Value</div>
+      <div class="ship-modal-stat-value accent">${cost}</div>
+    </div>
+    <div class="ship-modal-stat">
+      <div class="ship-modal-stat-label">Hull Insurance</div>
+      <div class="ship-modal-stat-value ${ship.lti ? 'ready' : ''}">${ship.lti ? 'Lifetime Insurance' : 'Standard Policy'}</div>
+    </div>
+  `;
+
+  // Merge in Beacon DB data if available
+  const beaconMatch = findBeaconData(name, ship.manufacturer_name);
+  const dyn = document.getElementById('modal-dynamic');
+  dyn.innerHTML = '';
+
+  if (beaconMatch) {
+    appendBeaconStats(dyn, beaconMatch);
+  }
+
+  // Lore
+  const loreSection = document.createElement('div');
+  loreSection.className = 'ship-modal-lore-wrap';
+  loreSection.innerHTML = `
+    <div class="ship-modal-divider"></div>
+    <div class="ship-modal-section-title">SHIP'S LOG — PERSONAL NOTATION</div>
+    <textarea class="ship-modal-lore" id="modal-lore-input" placeholder="Record the history of this vessel...">${lore}</textarea>
+    <div class="ship-modal-lore-hint" id="modal-lore-hint">autosaved to local registry</div>
+  `;
+  dyn.appendChild(loreSection);
+  document.getElementById('modal-lore-input').oninput = function() {
+    loreData[uid] = this.value;
+    save();
+    const hint = document.getElementById('modal-lore-hint');
+    hint.textContent = '✓ log entry saved';
+    hint.classList.add('saved');
+    // Update card badge live
+    const card = document.querySelector(`.ship-card[data-uid="${uid}"]`);
+    if (card) {
+      card.classList.toggle('has-lore', !!this.value.trim());
+    }
+    setTimeout(() => { hint.textContent = 'autosaved to local registry'; hint.classList.remove('saved'); }, 2000);
+  };
+
+  // Wing assignment
+  const wingSection = document.createElement('div');
+  wingSection.innerHTML = buildWingSection(uid);
+  dyn.appendChild(wingSection);
+
+  openShipModal();
+}
+
+// ── Open modal for a DATABASE ship
+function openDBModal(s) {
+  // Hero — try local ships/ directory
+  const heroImg = document.getElementById('modal-hero-img');
+  const imgSlug = s.ship.replace(/[^a-zA-Z0-9]/g,'_');
+  heroImg.src = `ships/${imgSlug}.jpg`;
+  heroImg.onerror = function() {
+    this.src = `ships/${imgSlug}.png`;
+    this.onerror = () => { this.style.display='none'; };
+  };
+  heroImg.style.display = '';
+
+  document.getElementById('modal-hero-mfr').textContent = s.manufacturer;
+
+  const heroBadges = document.getElementById('modal-hero-badges');
+  const isReady = s.status === 'Flight Ready';
+  heroBadges.innerHTML = `<span class="badge" style="background:${isReady?'var(--lti-glow)':'var(--amber-glow)'};border-color:${isReady?'rgba(0,200,150,0.4)':'rgba(232,160,32,0.4)'};color:${isReady?'var(--lti-color)':'var(--amber)'};">${s.status}</span>`;
+
+  document.getElementById('modal-name').textContent = s.ship;
+
+  const rsiLink = document.getElementById('modal-rsi-link');
+  rsiLink.style.display = 'none';
+
+  // Stats
+  const stats = document.getElementById('modal-stats');
+  stats.innerHTML = `
+    <div class="ship-modal-stat">
+      <div class="ship-modal-stat-label">Manufacturer</div>
+      <div class="ship-modal-stat-value">${s.manufacturer}</div>
+    </div>
+    <div class="ship-modal-stat">
+      <div class="ship-modal-stat-label">Class</div>
+      <div class="ship-modal-stat-value">${s.shipClass}</div>
+    </div>
+    <div class="ship-modal-stat">
+      <div class="ship-modal-stat-label">Size</div>
+      <div class="ship-modal-stat-value">${s.classWeight}</div>
+    </div>
+    <div class="ship-modal-stat">
+      <div class="ship-modal-stat-label">Status</div>
+      <div class="ship-modal-stat-value ${isReady?'ready':'concept'}">${s.status}</div>
+    </div>
+    <div class="ship-modal-stat">
+      <div class="ship-modal-stat-label">MSRP</div>
+      <div class="ship-modal-stat-value accent">${s.price ? '$'+s.price.toFixed(0)+' USD' : 'Earned'}</div>
+    </div>
+    <div class="ship-modal-stat">
+      <div class="ship-modal-stat-label">Max Crew</div>
+      <div class="ship-modal-stat-value">${s.maxCrew}</div>
+    </div>
+    <div class="ship-modal-stat">
+      <div class="ship-modal-stat-label">Cargo</div>
+      <div class="ship-modal-stat-value">${s.cargo} SCU</div>
+    </div>
+    <div class="ship-modal-stat">
+      <div class="ship-modal-stat-label">Hangar Req.</div>
+      <div class="ship-modal-stat-value">${s.hangarReq}</div>
+    </div>
+    <div class="ship-modal-stat">
+      <div class="ship-modal-stat-label">Carrier Capable</div>
+      <div class="ship-modal-stat-value ${s.carrierCapable==='Y'?'ready':''}">
+        ${s.carrierCapable==='Y' ? 'YES'+(s.onboardHangar?' — '+s.onboardHangar:'') : 'NO'}
+      </div>
+    </div>
+  `;
+
+  const dyn = document.getElementById('modal-dynamic');
+  dyn.innerHTML = '';
+  appendBeaconStats(dyn, s);
+  openShipModal();
+}
+
+function appendBeaconStats(container, s) {
+  if (s.carriedSnubs && s.carriedSnubs.length) {
+    const div = document.createElement('div');
+    div.innerHTML = `<div class="ship-modal-section-title">CARRIED SNUBS</div><div class="ship-modal-list"><li>${s.carriedSnubs.join('</li><li>')}</li></div>`;
+    container.appendChild(div);
+  }
+  if (s.armament && s.armament.length) {
+    const div = document.createElement('div');
+    div.innerHTML = `<div class="ship-modal-divider"></div><div class="ship-modal-section-title">ARMAMENT</div><ul class="ship-modal-list">${s.armament.map(a=>'<li>'+a+'</li>').join('')}</ul>`;
+    container.appendChild(div);
+  }
+  if (s.defenses && s.defenses.length) {
+    const div = document.createElement('div');
+    div.innerHTML = `<div class="ship-modal-section-title">DEFENSES</div><ul class="ship-modal-list">${s.defenses.map(d=>'<li>'+d+'</li>').join('')}</ul>`;
+    container.appendChild(div);
+  }
+}
+
+function buildWingSection(uid) {
+  if (!wings.length) return `<div class="ship-modal-divider"></div><div class="ship-modal-wing-label">WING / SQUADRON ASSIGNMENT</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">No wings formed — create one in Wings &amp; Squadrons</div>`;
+  let pills = wings.map(w => {
+    const active = assignments[uid] === w.id;
+    return `<button class="squadron-pill${active?' active':''}" onclick="assignWingModal('${uid}','${w.id}',this)">${w.name}</button>`;
+  }).join('');
+  if (assignments[uid]) pills += `<button class="squadron-pill unassign" onclick="assignWingModal('${uid}','',this)">Remove from wing</button>`;
+  return `<div class="ship-modal-divider"></div><div class="ship-modal-wing-label">WING / SQUADRON ASSIGNMENT</div><div class="ship-modal-wing-pills">${pills}</div>`;
+}
+
+function assignWingModal(uid, wingId, btn) {
+  if (!wingId) { delete assignments[uid]; }
+  else { assignments[uid] = wingId; }
+  save();
+  // Refresh pills
+  const dyn = document.getElementById('modal-dynamic');
+  const pillsWrap = dyn.querySelector('.ship-modal-wing-pills');
+  if (pillsWrap) pillsWrap.parentElement.outerHTML = buildWingSection(uid);
+  else { const s = dyn.querySelector('.ship-modal-divider:last-of-type'); if(s) s.parentElement.innerHTML = buildWingSection(uid); }
+  if (currentView === 'squadron') renderSquadrons();
+}
+
+// ── Fuzzy match fleet ship name → beacon entry
+function findBeaconData(displayName, mfrName) {
+  const dn = displayName.toLowerCase().trim();
+  // Direct name match
+  let m = BEACON_DB.find(s => s.ship.toLowerCase().trim() === dn);
+  if (!m) {
+    // Try partial: beacon ship name contained in displayName or vice versa
+    m = BEACON_DB.find(s => {
+      const bn = s.ship.toLowerCase();
+      return dn.includes(bn) || bn.includes(dn);
+    });
+  }
+  return m || null;
+}
+
+// ════════════════════════════════════════════════════════
+//  PATCH: fleet card click → fleet modal
+// ════════════════════════════════════════════════════════
+// Override buildCard's click handler — we patch after definition
+const _origBuildCard = buildCard;
+// (done inline below by patching the click event in buildCard)
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+loadFromStorage();
+initStarfield();
+initEntry();
+</script>
+</body>
+</html>
