@@ -1520,6 +1520,7 @@ const RSI_SHIP_DATA = {
   'RSI_Perseus':                        { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/perseus/Perseus', img: 'ships/Perseus.webp' },
   'ORIG_600i':                          { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/600i/600i-Explorer', img: 'ships/600i Exploration.webp' },
   'DRAK_Cutlass_Black':                 { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/drake-cutlass/Cutlass-Black', img: 'ships/Cutlass Black.webp' },
+  'DRAK_Buccaneer':                     { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/drake-buccaneer/Buccaneer', img: 'ships/Buccaneer.webp' },
   'RSI_Zeus_Mk_II_CL':                  { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/zeus-mk-ii/Zeus-Mk-II-CL', img: 'ships/Zeus Mk II CL.webp' },
   'RSI_Zeus_Mk_II_MR':                  { rsiUrl: 'https://robertsspaceindustries.com/en/pledge/ships/zeus-mk-ii/Zeus-Mk-II-MR', img: 'ships/Zeus Mk II MR.webp' },
 };
@@ -1534,6 +1535,7 @@ let assignments = {};   // ship_uid → wing_id
 let currentView = 'shipyard';
 let activeShipUID = null;
 let dragSrcUID = null;
+let shipyardViewAll = false;
 
 const STORE_KEYS = {
   fleet:       'manifest_fleet_v2',
@@ -1813,8 +1815,9 @@ function renderShipyard() {
   let syPage = parseInt(syPanel.dataset.page || '0');
   const sorted = Object.keys(groups).sort();
   const totalSyPages = Math.ceil(sorted.length / SY_PAGE_SIZE);
-  syPage = Math.min(syPage, totalSyPages - 1);
-  const pageSorted = sorted.slice(syPage * SY_PAGE_SIZE, (syPage + 1) * SY_PAGE_SIZE);
+  if (totalSyPages <= 1) shipyardViewAll = false;
+  syPage = Math.max(0, Math.min(syPage, Math.max(totalSyPages - 1, 0)));
+  const pageSorted = shipyardViewAll ? sorted : sorted.slice(syPage * SY_PAGE_SIZE, (syPage + 1) * SY_PAGE_SIZE);
   pageSorted.forEach(mfr => {
     const ships = groups[mfr];
     const section = document.createElement('div');
@@ -1837,7 +1840,7 @@ function renderShipyard() {
   // Pagination for shipyard
   if (totalSyPages > 1) {
     const pag = document.createElement('div');
-    pag.style.cssText = 'display:flex;justify-content:center;align-items:center;gap:8px;margin-top:8px;padding-bottom:40px;';
+    pag.style.cssText = 'display:flex;justify-content:center;align-items:center;gap:8px;margin-top:8px;padding-bottom:40px;flex-wrap:wrap;';
     const mkBtn = (label, page, disabled) => {
       const b = document.createElement('button');
       b.className = 'sq-btn';
@@ -1847,14 +1850,27 @@ function renderShipyard() {
       b.onclick = () => { syPanel.dataset.page = page; renderShipyard(); };
       return b;
     };
-    pag.appendChild(mkBtn('◀◀', 0, syPage === 0));
-    pag.appendChild(mkBtn('◀', syPage - 1, syPage === 0));
+    pag.appendChild(mkBtn('◀◀', 0, shipyardViewAll || syPage === 0));
+    pag.appendChild(mkBtn('◀', syPage - 1, shipyardViewAll || syPage === 0));
     const info = document.createElement('span');
     info.style.cssText = 'font-family:var(--font-mono);font-size:10px;color:var(--text-secondary);padding:0 8px;';
-    info.textContent = `${syPage+1} / ${totalSyPages}  (${sorted.length} shipyards)`;
+    info.textContent = shipyardViewAll
+      ? `ALL / ${totalSyPages} PAGES  (${sorted.length} shipyards)`
+      : `${syPage+1} / ${totalSyPages}  (${sorted.length} shipyards)`;
     pag.appendChild(info);
-    pag.appendChild(mkBtn('▶', syPage + 1, syPage >= totalSyPages-1));
-    pag.appendChild(mkBtn('▶▶', totalSyPages-1, syPage >= totalSyPages-1));
+    pag.appendChild(mkBtn('▶', syPage + 1, shipyardViewAll || syPage >= totalSyPages-1));
+    pag.appendChild(mkBtn('▶▶', totalSyPages-1, shipyardViewAll || syPage >= totalSyPages-1));
+
+    const viewAllBtn = document.createElement('button');
+    viewAllBtn.className = 'sq-btn';
+    viewAllBtn.textContent = shipyardViewAll ? 'PAGINATED VIEW' : 'VIEW ALL';
+    viewAllBtn.onclick = () => {
+      shipyardViewAll = !shipyardViewAll;
+      if (!shipyardViewAll) syPanel.dataset.page = syPage;
+      renderShipyard();
+    };
+    pag.appendChild(viewAllBtn);
+
     panel.appendChild(pag);
   }
 }
