@@ -2915,19 +2915,37 @@ function openDBModal(s) {
 }
 
 function appendBeaconStats(container, s) {
+  const hasRegistryMeta = s.shipClass || s.classWeight || s.maxCrew || s.hangarReq || s.status || s.onboardHangar || s.carrierCapable || s.price !== undefined;
+  if (hasRegistryMeta) {
+    const items = [];
+    if (s.shipClass) items.push(`<li>Registry Class: ${s.shipClass}</li>`);
+    if (s.classWeight) items.push(`<li>Weight Class: ${s.classWeight}</li>`);
+    if (s.maxCrew !== undefined && s.maxCrew !== null && s.maxCrew !== '') items.push(`<li>Max Crew: ${s.maxCrew}</li>`);
+    if (s.hangarReq) items.push(`<li>Hangar Requirement: ${s.hangarReq}</li>`);
+    if (s.status) items.push(`<li>Status: ${s.status}</li>`);
+    if (s.onboardHangar) items.push(`<li>Onboard Hangar: ${s.onboardHangar}</li>`);
+    if (s.carrierCapable) items.push(`<li>Carrier Capable: ${s.carrierCapable === 'Y' ? 'Yes' : 'No'}</li>`);
+    if (s.price !== undefined && s.price !== null && s.price !== '') items.push(`<li>Registry Value: $${s.price}</li>`);
+    if (s.cargo !== undefined && s.cargo !== null && s.cargo !== '') items.push(`<li>Reference Cargo: ${s.cargo} SCU</li>`);
+    if (items.length) {
+      const div = document.createElement('div');
+      div.innerHTML = `<div class="ship-modal-divider"></div><div class="ship-modal-section-title">REGISTRY DATA</div><ul class="ship-modal-list">${items.join('')}</ul>`;
+      container.appendChild(div);
+    }
+  }
   if (s.carriedSnubs && s.carriedSnubs.length) {
     const div = document.createElement('div');
-    div.innerHTML = `<div class="ship-modal-section-title">CARRIED SNUBS</div><div class="ship-modal-list"><li>${s.carriedSnubs.join('</li><li>')}</li></div>`;
+    div.innerHTML = `<div class="ship-modal-section-title">CARRIED SNUBS</div><ul class="ship-modal-list">${s.carriedSnubs.map(x => `<li>${x}</li>`).join('')}</ul>`;
     container.appendChild(div);
   }
   if (s.armament && s.armament.length) {
     const div = document.createElement('div');
-    div.innerHTML = `<div class="ship-modal-divider"></div><div class="ship-modal-section-title">ARMAMENT</div><ul class="ship-modal-list">${s.armament.map(a=>'<li>'+a+'</li>').join('')}</ul>`;
+    div.innerHTML = `<div class="ship-modal-divider"></div><div class="ship-modal-section-title">ARMAMENT</div><ul class="ship-modal-list">${s.armament.map(a => '<li>' + a + '</li>').join('')}</ul>`;
     container.appendChild(div);
   }
   if (s.defenses && s.defenses.length) {
     const div = document.createElement('div');
-    div.innerHTML = `<div class="ship-modal-section-title">DEFENSES</div><ul class="ship-modal-list">${s.defenses.map(d=>'<li>'+d+'</li>').join('')}</ul>`;
+    div.innerHTML = `<div class="ship-modal-section-title">DEFENSES</div><ul class="ship-modal-list">${s.defenses.map(d => '<li>' + d + '</li>').join('')}</ul>`;
     container.appendChild(div);
   }
 }
@@ -2956,21 +2974,27 @@ function assignWingModal(uid, wingId, btn) {
 
 // ── Fuzzy match fleet ship name → beacon entry
 function findBeaconData(displayName, mfrName) {
-  const dn = displayName.toLowerCase().trim()
-    .replace(/khartu-al/i, 'khartu al')
-    .replace(/san'tok\.yai/i, 'san tok yai')
-    .replace(/hercules \(a2\)/i, 'a2 hercules starlifter')
-    .replace(/hercules \(c2\)/i, 'c2 hercules starlifter')
-    .replace(/hercules \(m2\)/i, 'm2 hercules starlifter')
-    .replace(/spirit \(a1\)/i, 'spirit (a1)')
-    .replace(/spirit \(c1\)/i, 'spirit (c1)')
-    .replace(/spirit \(e1\)/i, 'spirit (e1)');
-  // Direct name match
-  let m = BEACON_DB.find(s => s.ship.toLowerCase().trim() === dn);
+  const normalize = v => String(v || '').toLowerCase().trim()
+    .replace(/khartu-al/ig, 'khartu al')
+    .replace(/san'tok\.yai/ig, 'san tok yai')
+    .replace(/hercules \(a2\)/ig, 'a2 hercules starlifter')
+    .replace(/hercules \(c2\)/ig, 'c2 hercules starlifter')
+    .replace(/hercules \(m2\)/ig, 'm2 hercules starlifter')
+    .replace(/spirit \(a1\)/ig, 'spirit (a1)')
+    .replace(/spirit \(c1\)/ig, 'spirit (c1)')
+    .replace(/spirit \(e1\)/ig, 'spirit (e1)')
+    .replace(/mkii/ig, 'mk ii')
+    .replace(/mk\.\s*ii/ig, 'mk ii')
+    .replace(/\s+/g, ' ');
+
+  const dn = normalize(displayName);
+  const mn = normalize(mfrName);
+
+  let m = BEACON_DB.find(s => normalize(s.ship) === dn && (!mn || normalize(s.manufacturer) === mn));
+  if (!m) m = BEACON_DB.find(s => normalize(s.ship) === dn);
   if (!m) {
-    // Try partial: beacon ship name contained in displayName or vice versa
     m = BEACON_DB.find(s => {
-      const bn = s.ship.toLowerCase();
+      const bn = normalize(s.ship);
       return dn.includes(bn) || bn.includes(dn);
     });
   }
